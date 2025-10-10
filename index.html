@@ -302,69 +302,68 @@
             handleFiles(e.target.files);
         });
 
-        async function handleFiles(files) {
-            errorDiv.classList.remove('active');
-            successDiv.classList.remove('active');
-            debugDiv.classList.add('active');
-            debugDiv.textContent = '';
-            loading.classList.add('active');
-            previewGrid.innerHTML = '';
-            extractedIcons = [];
+    async function handleFiles(files) {
+    errorDiv.classList.remove('active');
+    successDiv.classList.remove('active');
+    loading.classList.add('active');
+    previewGrid.innerHTML = '';
+    extractedIcons = [];
+    debugDiv.classList.add('active');
+    debugDiv.textContent = '';
+    
+    // Your PythonAnywhere backend URL
+    const API_URL = 'https://kirkizillo.pythonanywhere.com';
+    
+    try {
+        for (let file of files) {
+            const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+            log(`Processing: ${file.name} (${sizeMB} MB)`);
             
-            try {
-                for (let file of files) {
-                    log(`Processing: ${file.name}`);
-                    await extractIconFromExe(file);
-                }
-                
-                if (extractedIcons.length > 0) {
-                    previewArea.classList.add('active');
-                    successDiv.textContent = `Successfully extracted ${extractedIcons.length} icon(s)!`;
-                    successDiv.classList.add('active');
-                } else {
-                    showError('No icons could be extracted from the selected files.');
-                }
-            } catch (error) {
-                log(`Error: ${error.message}`);
-                showError(`Error processing files: ${error.message}`);
-            } finally {
-                loading.classList.remove('active');
+            // For large files, only send first 10MB (icons are in the header)
+            let fileToUpload = file;
+            if (file.size > 10 * 1024 * 1024) {
+                log('Large file detected - sending first 10MB only');
+                fileToUpload = new File(
+                    [file.slice(0, 10 * 1024 * 1024)], 
+                    file.name, 
+                    { type: file.type || 'application/x-msdownload' }
+                );
             }
+            
+            // Create form data and upload
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            
+            log('Uploading to server...');
+            
+            const response = await fetch(`${API_URL}/api/extract-icon`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to extract icon');
+            }
+            
+            const iconBlob = await response.blob();
+            addIconToPreview(iconBlob, file.name);
+            log(`✓ Success!`);
         }
+        
+        if (extractedIcons.length > 0) {
+            previewArea.classList.add('active');
+            successDiv.textContent = `Successfully extracted ${extractedIcons.length} icon(s)!`;
+            successDiv.classList.add('active');
+        }
+    } catch (error) {
+        log(`❌ Error: ${error.message}`);
+        showError(`Error: ${error.message}`);
+    } finally {
+        loading.classList.remove('active');
+    }
+}
 
-        async function extractIconFromExe(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            const data = new Uint8Array(arrayBuffer);
-            
-            log(`File size: ${data.length} bytes`);
-            
-            // Parse PE header
-            const dosHeader = parseDosHeader(data);
-            if (!dosHeader) {
-                throw new Error(`${file.name}: Not a valid PE file (invalid DOS header)`);
-            }
-            
-            log(`PE offset: 0x${dosHeader.peOffset.toString(16)}`);
-            
-            const peHeader = parsePeHeader(data, dosHeader.peOffset);
-            if (!peHeader) {
-                throw new Error(`${file.name}: Invalid PE header`);
-            }
-            
-            log(`Sections: ${peHeader.numberOfSections}`);
-            
-            // Find resource section
-            const resourceSection = findResourceSection(data, peHeader);
-            if (!resourceSection) {
-                log('No .rsrc section found, trying alternate methods...');
-                // Try to find icon data directly
-                const foundIcon = await findIconDataDirectly(data, file.name);
-                if (!foundIcon) {
-                    throw new Error(`${file.name}: No icon resources found`);
-                }
-                return;
-            }
-            
             log(`Resource section at: 0x${resourceSection.rawOffset.toString(16)}, size: ${resourceSection.size}`);
             
             // Parse resource directory
@@ -385,285 +384,7 @@
             for (const iconData of icons) {
                 await processIconData(iconData, file.name);
             }
-        }
-
-        function parseDosHeader(data) {
-            if (data.length < 64) return null;
-            
-            // Check MZ signature
-            if (data[0] !== 0x4D || data[1] !== 0x5A) return null;
-            
-            // Get PE header offset (at 0x3C)
-            const peOffset = data[0x3C] | (data[0x3D] << 8) | (data[0x3E] << 16) | (data[0x3F] << 24);
-            
-            return { peOffset };
-        }
-
-        function parsePeHeader(data, offset) {
-            if (offset + 24 > data.length) return null;
-            
-            // Check PE signature
-            if (data[offset] !== 0x50 || data[offset + 1] !== 0x45 || 
-                data[offset + 2] !== 0x00 || data[offset + 3] !== 0x00) {
-                return null;
-            }
-            
-            // Machine type
-            const machine = data[offset + 4] | (data[offset + 5] << 8);
-            const is64bit = (machine === 0x8664); // AMD64
-            
-            // Number of sections
-            const numberOfSections = data[offset + 6] | (data[offset + 7] << 8);
-            
-            // Size of optional header
-            const sizeOfOptionalHeader = data[offset + 20] | (data[offset + 21] << 8);
-            
-            return {
-                is64bit,
-                numberOfSections,
-                sizeOfOptionalHeader,
-                sectionTableOffset: offset + 24 + sizeOfOptionalHeader
-            };
-        }
-
-        function findResourceSection(data, peHeader) {
-            const sectionTableOffset = peHeader.sectionTableOffset;
-            
-            for (let i = 0; i < peHeader.numberOfSections; i++) {
-                const sectionOffset = sectionTableOffset + (i * 40);
-                if (sectionOffset + 40 > data.length) break;
-                
-                // Read section name (8 bytes)
-                let name = '';
-                for (let j = 0; j < 8; j++) {
-                    const c = data[sectionOffset + j];
-                    if (c === 0) break;
-                    name += String.fromCharCode(c);
-                }
-                
-                if (name === '.rsrc') {
-                    const virtualAddress = readUint32(data, sectionOffset + 12);
-                    const size = readUint32(data, sectionOffset + 16);
-                    const rawOffset = readUint32(data, sectionOffset + 20);
-                    
-                    return { virtualAddress, size, rawOffset };
-                }
-            }
-            
-            return null;
-        }
-
-        function parseResourceDirectory(data, resourceSection, is64bit) {
-            const icons = [];
-            const baseOffset = resourceSection.rawOffset;
-            const virtualBase = resourceSection.virtualAddress;
-            
-            // RT_ICON = 3, RT_GROUP_ICON = 14
-            try {
-                // Parse root directory
-                const rootEntries = parseResourceDirEntries(data, baseOffset, baseOffset);
-                
-                log(`Root entries: ${rootEntries.length}`);
-                
-                for (const entry of rootEntries) {
-                    if (entry.id === 3 || entry.id === 14) { // RT_ICON or RT_GROUP_ICON
-                        log(`Found icon type: ${entry.id === 3 ? 'RT_ICON' : 'RT_GROUP_ICON'}`);
-                        
-                        const secondLevel = parseResourceDirEntries(data, baseOffset + entry.offset, baseOffset);
-                        
-                        for (const entry2 of secondLevel) {
-                            const thirdLevel = parseResourceDirEntries(data, baseOffset + entry2.offset, baseOffset);
-                            
-                            for (const entry3 of thirdLevel) {
-                                // Get data entry
-                                const dataEntryOffset = baseOffset + entry3.offset;
-                                const dataRva = readUint32(data, dataEntryOffset);
-                                const dataSize = readUint32(data, dataEntryOffset + 4);
-                                
-                                // Convert RVA to file offset
-                                const dataOffset = dataRva - virtualBase + baseOffset;
-                                
-                                if (dataOffset + dataSize <= data.length) {
-                                    const iconData = data.slice(dataOffset, dataOffset + dataSize);
-                                    icons.push(iconData);
-                                    log(`Extracted icon data: ${dataSize} bytes`);
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                log(`Error parsing resource directory: ${e.message}`);
-            }
-            
-            return icons;
-        }
-
-        function parseResourceDirEntries(data, offset, baseOffset) {
-            const entries = [];
-            
-            if (offset + 16 > data.length) return entries;
-            
-            const numberOfNamedEntries = readUint16(data, offset + 12);
-            const numberOfIdEntries = readUint16(data, offset + 14);
-            
-            const entryOffset = offset + 16;
-            const totalEntries = numberOfNamedEntries + numberOfIdEntries;
-            
-            for (let i = 0; i < totalEntries; i++) {
-                const entryPos = entryOffset + (i * 8);
-                if (entryPos + 8 > data.length) break;
-                
-                const nameOrId = readUint32(data, entryPos);
-                const dataOrSubdir = readUint32(data, entryPos + 4);
-                
-                const isSubdir = (dataOrSubdir & 0x80000000) !== 0;
-                const offset = dataOrSubdir & 0x7FFFFFFF;
-                
-                entries.push({
-                    id: nameOrId,
-                    offset: offset,
-                    isSubdir: isSubdir
-                });
-            }
-            
-            return entries;
-        }
-
-        async function findIconDataDirectly(data, fileName) {
-            // Search for PNG signature (common in modern exes)
-            for (let i = 0; i < data.length - 8; i++) {
-                if (data[i] === 0x89 && data[i+1] === 0x50 && 
-                    data[i+2] === 0x4E && data[i+3] === 0x47) {
-                    
-                    log('Found PNG signature');
-                    
-                    // Find PNG end
-                    let endPos = i + 8;
-                    while (endPos < data.length - 12) {
-                        if (data[endPos] === 0x49 && data[endPos+1] === 0x45 && 
-                            data[endPos+2] === 0x4E && data[endPos+3] === 0x44) {
-                            endPos += 12; // Include IEND chunk + CRC
-                            break;
-                        }
-                        endPos++;
-                    }
-                    
-                    if (endPos > i + 8) {
-                        const pngData = data.slice(i, endPos);
-                        await processIconData(pngData, fileName);
-                        return true;
-                    }
-                }
-            }
-            
-            // Search for ICO signature
-            for (let i = 0; i < data.length - 6; i++) {
-                if (data[i] === 0x00 && data[i+1] === 0x00 && 
-                    data[i+2] === 0x01 && data[i+3] === 0x00) {
-                    
-                    const numImages = data[i+4] | (data[i+5] << 8);
-                    
-                    if (numImages > 0 && numImages < 256) {
-                        log(`Found ICO with ${numImages} images`);
-                        
-                        // Extract a reasonable chunk of data
-                        const iconSize = Math.min(500000, data.length - i);
-                        const iconData = data.slice(i, i + iconSize);
-                        await processIconData(iconData, fileName);
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-        }
-
-        async function processIconData(iconData, fileName) {
-            // Detect type
-            let mimeType = 'image/x-icon';
-            
-            if (iconData[0] === 0x89 && iconData[1] === 0x50 && 
-                iconData[2] === 0x4E && iconData[3] === 0x47) {
-                mimeType = 'image/png';
-            } else if (iconData[0] === 0xFF && iconData[1] === 0xD8) {
-                mimeType = 'image/jpeg';
-            } else if (iconData[0] === 0x42 && iconData[1] === 0x4D) {
-                mimeType = 'image/bmp';
-            }
-            
-            log(`Icon type: ${mimeType}`);
-            
-            const blob = new Blob([iconData], { type: mimeType });
-            
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                const url = URL.createObjectURL(blob);
-                
-                img.onload = () => {
-                    log(`Image loaded: ${img.width}x${img.height}`);
-                    
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 150;
-                    canvas.height = 150;
-                    const ctx = canvas.getContext('2d');
-                    
-                    // Fill with white background
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, 150, 150);
-                    
-                    // Draw image centered and scaled
-                    const scale = Math.min(150 / img.width, 150 / img.height);
-                    const x = (150 - img.width * scale) / 2;
-                    const y = (150 - img.height * scale) / 2;
-                    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-                    
-                    canvas.toBlob((resultBlob) => {
-                        addIconToPreview(resultBlob, fileName);
-                        URL.revokeObjectURL(url);
-                        resolve();
-                    }, 'image/png');
-                };
-                
-                img.onerror = () => {
-                    log('Failed to load as image, trying ICO parser...');
-                    URL.revokeObjectURL(url);
-                    
-                    // Try to parse as ICO and extract the largest image
-                    parseIcoFile(iconData, fileName).then(resolve).catch(reject);
-                };
-                
-                img.src = url;
-            });
-        }
-
-        async function parseIcoFile(data, fileName) {
-            // ICO format parser
-            if (data[0] !== 0x00 || data[1] !== 0x00 || data[2] !== 0x01 || data[3] !== 0x00) {
-                throw new Error('Not a valid ICO file');
-            }
-            
-            const numImages = data[4] | (data[5] << 8);
-            log(`ICO contains ${numImages} images`);
-            
-            if (numImages === 0) throw new Error('ICO contains no images');
-            
-            // Find the largest image
-            let largestIdx = 0;
-            let largestSize = 0;
-            
-            for (let i = 0; i < numImages; i++) {
-                const offset = 6 + (i * 16);
-                const width = data[offset] || 256;
-                const height = data[offset + 1] || 256;
-                const size = width * height;
-                
-                if (size > largestSize) {
-                    largestSize = size;
-                    largestIdx = i;
-                }
-            }
-            
+        }      
             // Get the largest image data
             const dirOffset = 6 + (largestIdx * 16);
             const imageSize = readUint32(data, dirOffset + 8);
