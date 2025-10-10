@@ -470,14 +470,14 @@
             let badgeTitle = '';
             
             if (metadata.quality === 'small_source') {
-                badgeLabel = '🔴 Small Source';
-                badgeTitle = `Original: ${metadata.originalSize} (Limited quality from source)`;
+            badgeLabel = '🔴 AI Enhanced';
+            badgeTitle = `Original: ${metadata.originalSize} (AI upscaled for better quality)`;
             } else if (metadata.quality === 'medium_source') {
-                badgeLabel = '🟡 Enhanced';
-                badgeTitle = `Original: ${metadata.originalSize} (Enhanced upscaling)`;
+            badgeLabel = '🟡 AI Enhanced';
+            badgeTitle = `Original: ${metadata.originalSize} (AI upscaled)`;
             } else {
-                badgeLabel = '🟢 High Quality';
-                badgeTitle = `Original: ${metadata.originalSize} (Native quality)`;
+            badgeLabel = '🟢 High Quality';
+            badgeTitle = `Original: ${metadata.originalSize} (Native quality)`;
             }
             
             const item = document.createElement('div');
