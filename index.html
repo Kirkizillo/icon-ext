@@ -91,11 +91,6 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
         .preview-area {
             margin-top: 30px;
             display: none;
@@ -168,15 +163,6 @@
             display: block;
         }
         
-        .info {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #1976d2;
-        }
-        
         .loading {
             display: none;
             text-align: center;
@@ -217,6 +203,15 @@
         .debug.active {
             display: block;
         }
+        
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #1976d2;
+        }
     </style>
 </head>
 <body>
@@ -228,7 +223,7 @@
             <div class="upload-icon">📦</div>
             <p><strong>Drop .exe or .dll files here or click to browse</strong></p>
             <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                Supports Windows executables (.exe, .dll)
+                Supports Windows executables (.exe, .dll) up to 200MB
             </p>
             <input type="file" id="fileInput" accept=".exe,.dll" multiple>
         </div>
@@ -256,7 +251,7 @@
             • Upload .exe or .dll files to extract their embedded icons<br>
             • Icons are automatically resized to 150x150 pixels<br>
             • Download individual icons or all as a ZIP file<br>
-            • All processing happens in your browser - completely private!
+            • Processing happens on our secure server!
         </div>
     </div>
 
@@ -302,142 +297,65 @@
             handleFiles(e.target.files);
         });
 
-    async function handleFiles(files) {
-    errorDiv.classList.remove('active');
-    successDiv.classList.remove('active');
-    loading.classList.add('active');
-    previewGrid.innerHTML = '';
-    extractedIcons = [];
-    debugDiv.classList.add('active');
-    debugDiv.textContent = '';
-    
-    // Your PythonAnywhere backend URL
-    const API_URL = 'https://kirkizillo.pythonanywhere.com';
-    
-    try {
-        for (let file of files) {
-            const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-            log(`Processing: ${file.name} (${sizeMB} MB)`);
+        async function handleFiles(files) {
+            errorDiv.classList.remove('active');
+            successDiv.classList.remove('active');
+            loading.classList.add('active');
+            previewGrid.innerHTML = '';
+            extractedIcons = [];
+            debugDiv.classList.add('active');
+            debugDiv.textContent = '';
             
-            // For large files, only send first 10MB (icons are in the header)
-            let fileToUpload = file;
-            if (file.size > 10 * 1024 * 1024) {
-                log('Large file detected - sending first 10MB only');
-                fileToUpload = new File(
-                    [file.slice(0, 10 * 1024 * 1024)], 
-                    file.name, 
-                    { type: file.type || 'application/x-msdownload' }
-                );
-            }
+            // Your PythonAnywhere backend URL
+            const API_URL = 'https://kirkizillo.pythonanywhere.com';
             
-            // Create form data and upload
-            const formData = new FormData();
-            formData.append('file', fileToUpload);
-            
-            log('Uploading to server...');
-            
-            const response = await fetch(`${API_URL}/api/extract-icon`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to extract icon');
-            }
-            
-            const iconBlob = await response.blob();
-            addIconToPreview(iconBlob, file.name);
-            log(`✓ Success!`);
-        }
-        
-        if (extractedIcons.length > 0) {
-            previewArea.classList.add('active');
-            successDiv.textContent = `Successfully extracted ${extractedIcons.length} icon(s)!`;
-            successDiv.classList.add('active');
-        }
-    } catch (error) {
-        log(`❌ Error: ${error.message}`);
-        showError(`Error: ${error.message}`);
-    } finally {
-        loading.classList.remove('active');
-    }
-}
-
-            log(`Resource section at: 0x${resourceSection.rawOffset.toString(16)}, size: ${resourceSection.size}`);
-            
-            // Parse resource directory
-            const icons = parseResourceDirectory(data, resourceSection, peHeader.is64bit);
-            
-            if (icons.length === 0) {
-                log('No icons in resource directory, trying direct search...');
-                const foundIcon = await findIconDataDirectly(data, file.name);
-                if (!foundIcon) {
-                    throw new Error(`${file.name}: No icon data found`);
+            try {
+                for (let file of files) {
+                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    log(`Processing: ${file.name} (${sizeMB} MB)`);
+                    
+                    // For large files, only send first 10MB
+                    let fileToUpload = file;
+                    if (file.size > 10 * 1024 * 1024) {
+                        log('Large file - sending first 10MB only');
+                        fileToUpload = new File(
+                            [file.slice(0, 10 * 1024 * 1024)], 
+                            file.name, 
+                            { type: file.type || 'application/x-msdownload' }
+                        );
+                    }
+                    
+                    const formData = new FormData();
+                    formData.append('file', fileToUpload);
+                    
+                    log('Uploading to server...');
+                    
+                    const response = await fetch(`${API_URL}/api/extract-icon`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to extract icon');
+                    }
+                    
+                    const iconBlob = await response.blob();
+                    addIconToPreview(iconBlob, file.name);
+                    log(`✓ Success!`);
                 }
-                return;
-            }
-            
-            log(`Found ${icons.length} icon(s)`);
-            
-            // Extract and resize the largest/best icon
-            for (const iconData of icons) {
-                await processIconData(iconData, file.name);
-            }
-        }      
-            // Get the largest image data
-            const dirOffset = 6 + (largestIdx * 16);
-            const imageSize = readUint32(data, dirOffset + 8);
-            const imageOffset = readUint32(data, dirOffset + 12);
-            
-            log(`Extracting image ${largestIdx}: size=${imageSize}, offset=${imageOffset}`);
-            
-            if (imageOffset + imageSize > data.length) {
-                throw new Error('Invalid ICO image offset');
-            }
-            
-            const imageData = data.slice(imageOffset, imageOffset + imageSize);
-            
-            // Check if it's a PNG
-            let mimeType = 'image/bmp';
-            if (imageData[0] === 0x89 && imageData[1] === 0x50) {
-                mimeType = 'image/png';
-            }
-            
-            const blob = new Blob([imageData], { type: mimeType });
-            
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                const url = URL.createObjectURL(blob);
                 
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 150;
-                    canvas.height = 150;
-                    const ctx = canvas.getContext('2d');
-                    
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, 150, 150);
-                    
-                    const scale = Math.min(150 / img.width, 150 / img.height);
-                    const x = (150 - img.width * scale) / 2;
-                    const y = (150 - img.height * scale) / 2;
-                    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-                    
-                    canvas.toBlob((resultBlob) => {
-                        addIconToPreview(resultBlob, fileName);
-                        URL.revokeObjectURL(url);
-                        resolve();
-                    }, 'image/png');
-                };
-                
-                img.onerror = () => {
-                    URL.revokeObjectURL(url);
-                    reject(new Error('Failed to load ICO image'));
-                };
-                
-                img.src = url;
-            });
+                if (extractedIcons.length > 0) {
+                    previewArea.classList.add('active');
+                    successDiv.textContent = `Successfully extracted ${extractedIcons.length} icon(s)!`;
+                    successDiv.classList.add('active');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+                showError(`Error: ${error.message}`);
+            } finally {
+                loading.classList.remove('active');
+            }
         }
 
         function addIconToPreview(blob, originalName) {
@@ -496,15 +414,6 @@
         function showError(message) {
             errorDiv.textContent = message;
             errorDiv.classList.add('active');
-        }
-
-        function readUint16(data, offset) {
-            return data[offset] | (data[offset + 1] << 8);
-        }
-
-        function readUint32(data, offset) {
-            return data[offset] | (data[offset + 1] << 8) | 
-                   (data[offset + 2] << 16) | (data[offset + 3] << 24);
         }
     </script>
 </body>
