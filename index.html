@@ -49,7 +49,6 @@
             cursor: pointer;
             transition: all 0.3s ease;
             background: rgba(255, 255, 255, 0.03);
-            position: relative;
         }
         
         .upload-area:hover {
@@ -100,10 +99,6 @@
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-        }
-        
-        .btn:active {
-            transform: translateY(0);
         }
         
         .preview-area {
@@ -158,6 +153,7 @@
             text-align: center;
             transition: all 0.3s;
             cursor: pointer;
+            position: relative;
         }
         
         .preview-item:hover {
@@ -180,7 +176,29 @@
             font-size: 12px;
             color: #b0b0b0;
             word-break: break-all;
+            margin-bottom: 8px;
+        }
+        
+        .quality-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
             margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        
+        .quality-badge.enhanced {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+        
+        .quality-badge.original {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
         
         .download-btn {
@@ -242,6 +260,10 @@
             border-left: 4px solid #10b981;
         }
         
+        .toast.warning {
+            border-left: 4px solid #fbbf24;
+        }
+        
         .toast.error {
             border-left: 4px solid #ef4444;
         }
@@ -251,18 +273,10 @@
             margin-top: 24px;
         }
         
-        @media (max-width: 768px) {
-            .container {
-                padding: 24px;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-            
-            .preview-grid {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            }
+        .size-info {
+            font-size: 10px;
+            color: #707070;
+            margin-top: 4px;
         }
     </style>
 </head>
@@ -310,7 +324,6 @@
         let extractedIcons = [];
         const API_URL = 'https://kirkizillo.pythonanywhere.com';
 
-        // Toast notification
         function showToast(message, type = 'success') {
             toast.textContent = message;
             toast.className = `toast ${type} show`;
@@ -319,7 +332,6 @@
             }, 3000);
         }
 
-        // Drag and drop handlers
         uploadArea.addEventListener('click', () => fileInput.click());
         
         uploadArea.addEventListener('dragover', (e) => {
@@ -341,7 +353,6 @@
             handleFiles(e.target.files);
         });
 
-        // Clear all
         clearBtn.addEventListener('click', () => {
             extractedIcons = [];
             previewGrid.innerHTML = '';
@@ -349,7 +360,6 @@
             showToast('Cleared all icons');
         });
 
-        // Keyboard support
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && extractedIcons.length > 0) {
                 clearBtn.click();
@@ -361,13 +371,11 @@
             
             try {
                 for (let file of files) {
-                    // Validate file size
                     if (file.size > 200 * 1024 * 1024) {
                         showToast(`${file.name} exceeds 200MB limit`, 'error');
                         continue;
                     }
 
-                    // Validate file type
                     if (!file.name.match(/\.(exe|dll)$/i)) {
                         showToast(`${file.name} is not a valid file type`, 'error');
                         continue;
@@ -395,9 +403,24 @@
                         throw new Error(error.error || 'Failed to extract icon');
                     }
                     
+                    // Get metadata from headers
+                    const wasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
+                    const originalSize = response.headers.get('X-Original-Size');
+                    const quality = response.headers.get('X-Quality');
+                    
                     const iconBlob = await response.blob();
-                    addIconToPreview(iconBlob, file.name);
-                    showToast(`Extracted icon from ${file.name}`);
+                    addIconToPreview(iconBlob, file.name, {
+                        wasUpscaled,
+                        originalSize,
+                        quality
+                    });
+                    
+                    // Show warning for enhanced icons
+                    if (wasUpscaled) {
+                        showToast(`Enhanced from small icon (${originalSize})`, 'warning');
+                    } else {
+                        showToast(`Extracted icon from ${file.name}`);
+                    }
                 }
                 
                 if (extractedIcons.length > 0) {
@@ -410,20 +433,27 @@
             }
         }
 
-        function addIconToPreview(blob, originalName) {
+        function addIconToPreview(blob, originalName, metadata) {
             const url = URL.createObjectURL(blob);
             const baseName = originalName.replace(/\.[^/.]+$/, '');
             
             extractedIcons.push({
                 blob: blob,
-                name: `${baseName}_150x150.png`
+                name: `${baseName}_150x150.png`,
+                metadata: metadata
             });
+            
+            const qualityBadge = metadata.wasUpscaled 
+                ? `<div class="quality-badge enhanced" title="Enhanced from ${metadata.originalSize}">⬆️ Enhanced</div>`
+                : `<div class="quality-badge original" title="Original quality from ${metadata.originalSize}">✓ Original</div>`;
             
             const item = document.createElement('div');
             item.className = 'preview-item';
             item.innerHTML = `
                 <img src="${url}" alt="Icon">
+                ${qualityBadge}
                 <div class="file-name">${baseName}</div>
+                <div class="size-info">${metadata.originalSize} → 150x150</div>
                 <button class="btn download-btn">Download</button>
             `;
             
