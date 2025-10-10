@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EXE Icon Extractor 150x150</title>
+    <title>Icon Extractor</title>
     <style>
         * {
             margin: 0;
@@ -12,62 +12,72 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            color: #e0e0e0;
         }
         
         .container {
-            background: white;
-            border-radius: 20px;
+            background: rgba(30, 30, 46, 0.95);
+            border-radius: 16px;
             padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 700px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            max-width: 900px;
             width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         h1 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 28px;
-            text-align: center;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #666;
+            color: #ffffff;
             margin-bottom: 30px;
-            font-size: 14px;
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-align: center;
         }
         
         .upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 40px;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 60px 40px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
-            background: #f8f9ff;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.03);
+            position: relative;
         }
         
         .upload-area:hover {
-            border-color: #764ba2;
-            background: #f0f1ff;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.05);
         }
         
         .upload-area.dragover {
-            border-color: #764ba2;
-            background: #e8e9ff;
-            transform: scale(1.02);
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+            transform: scale(1.01);
         }
         
         .upload-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.6;
+        }
+        
+        .upload-text {
+            font-size: 16px;
+            color: #b0b0b0;
+            margin-bottom: 8px;
+        }
+        
+        .upload-hint {
+            font-size: 13px;
+            color: #707070;
         }
         
         input[type="file"] {
@@ -75,24 +85,29 @@
         }
         
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            font-size: 16px;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
-            transition: transform 0.2s;
-            margin-top: 20px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
         
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
         }
         
         .preview-area {
-            margin-top: 30px;
+            margin-top: 40px;
             display: none;
         }
         
@@ -100,73 +115,84 @@
             display: block;
         }
         
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .preview-header h3 {
+            font-size: 18px;
+            font-weight: 400;
+            color: #ffffff;
+        }
+        
+        .clear-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
         .preview-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 20px;
-            margin-top: 20px;
+            margin-bottom: 24px;
         }
         
         .preview-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
             text-align: center;
-            padding: 15px;
-            background: #f8f9ff;
-            border-radius: 10px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .preview-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-4px);
         }
         
         .preview-item img {
-            width: 150px;
-            height: 150px;
-            border: 2px solid #667eea;
-            border-radius: 10px;
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
             object-fit: contain;
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            margin-bottom: 12px;
         }
         
-        .preview-item .file-name {
-            margin-top: 8px;
-            font-size: 11px;
-            color: #666;
-            word-break: break-all;
-        }
-        
-        .preview-item .size-label {
-            margin-top: 5px;
+        .file-name {
             font-size: 12px;
-            color: #667eea;
-            font-weight: bold;
+            color: #b0b0b0;
+            word-break: break-all;
+            margin-bottom: 12px;
         }
         
-        .error {
-            color: #e74c3c;
-            margin-top: 15px;
-            padding: 10px;
-            background: #ffe5e5;
-            border-radius: 8px;
-            display: none;
-        }
-        
-        .error.active {
-            display: block;
-        }
-        
-        .success {
-            color: #27ae60;
-            margin-top: 15px;
-            padding: 10px;
-            background: #e8f8f0;
-            border-radius: 8px;
-            display: none;
-        }
-        
-        .success.active {
-            display: block;
+        .download-btn {
+            width: 100%;
+            padding: 8px;
+            font-size: 12px;
         }
         
         .loading {
             display: none;
             text-align: center;
-            margin-top: 20px;
+            margin-top: 30px;
         }
         
         .loading.active {
@@ -174,86 +200,101 @@
         }
         
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #6366f1;
             border-radius: 50%;
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto;
+            margin: 0 auto 16px;
         }
         
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .debug {
-            margin-top: 20px;
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 8px;
-            font-size: 12px;
-            font-family: monospace;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .debug.active {
-            display: block;
+        
+        .loading-text {
+            color: #b0b0b0;
+            font-size: 14px;
         }
         
-        .info {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #1976d2;
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 30, 46, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 16px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+        
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .actions {
+            text-align: center;
+            margin-top: 24px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎯 EXE Icon Extractor</h1>
-        <p class="subtitle">Extract and resize icons from .exe and .dll files to 150x150</p>
+        <h1>Icon Extractor</h1>
         
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📦</div>
-            <p><strong>Drop .exe or .dll files here or click to browse</strong></p>
-            <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                Supports Windows executables (.exe, .dll) up to 200MB
-            </p>
+            <p class="upload-text">Drop files here or click to browse</p>
+            <p class="upload-hint">.exe, .dll · up to 200MB</p>
             <input type="file" id="fileInput" accept=".exe,.dll" multiple>
         </div>
         
-        <div class="error" id="error"></div>
-        <div class="success" id="success"></div>
-        
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="margin-top: 10px;">Extracting icons from executable...</p>
+            <p class="loading-text">Extracting icons...</p>
         </div>
         
         <div class="preview-area" id="previewArea">
-            <h3>Extracted Icons (150x150)</h3>
+            <div class="preview-header">
+                <h3>Extracted Icons</h3>
+                <button class="clear-btn" id="clearBtn">Clear All</button>
+            </div>
             <div class="preview-grid" id="previewGrid"></div>
-            <div style="text-align: center;">
-                <button class="btn" id="downloadAll">Download All Icons</button>
+            <div class="actions">
+                <button class="btn" id="downloadAll">Download All as ZIP</button>
             </div>
         </div>
-
-        <div class="debug" id="debug"></div>
-        
-        <div class="info">
-            <strong>💡 How it works:</strong><br>
-            • Upload .exe or .dll files to extract their embedded icons<br>
-            • Icons are automatically resized to 150x150 pixels<br>
-            • Download individual icons or all as a ZIP file<br>
-            • Processing happens on our secure server!
-        </div>
     </div>
+
+    <div class="toast" id="toast"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
@@ -261,18 +302,21 @@
         const fileInput = document.getElementById('fileInput');
         const previewArea = document.getElementById('previewArea');
         const previewGrid = document.getElementById('previewGrid');
-        const errorDiv = document.getElementById('error');
-        const successDiv = document.getElementById('success');
         const loading = document.getElementById('loading');
         const downloadAllBtn = document.getElementById('downloadAll');
-        const debugDiv = document.getElementById('debug');
+        const clearBtn = document.getElementById('clearBtn');
+        const toast = document.getElementById('toast');
         
         let extractedIcons = [];
+        const API_URL = 'https://kirkizillo.pythonanywhere.com';
 
-        function log(message) {
-            console.log(message);
-            debugDiv.textContent += message + '\n';
-            debugDiv.scrollTop = debugDiv.scrollHeight;
+        // Toast notification
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
         }
 
         // Drag and drop handlers
@@ -297,27 +341,40 @@
             handleFiles(e.target.files);
         });
 
-        async function handleFiles(files) {
-            errorDiv.classList.remove('active');
-            successDiv.classList.remove('active');
-            loading.classList.add('active');
-            previewGrid.innerHTML = '';
+        // Clear all
+        clearBtn.addEventListener('click', () => {
             extractedIcons = [];
-            debugDiv.classList.add('active');
-            debugDiv.textContent = '';
-            
-            // Your PythonAnywhere backend URL
-            const API_URL = 'https://kirkizillo.pythonanywhere.com';
+            previewGrid.innerHTML = '';
+            previewArea.classList.remove('active');
+            showToast('Cleared all icons');
+        });
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && extractedIcons.length > 0) {
+                clearBtn.click();
+            }
+        });
+
+        async function handleFiles(files) {
+            loading.classList.add('active');
             
             try {
                 for (let file of files) {
-                    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                    log(`Processing: ${file.name} (${sizeMB} MB)`);
+                    // Validate file size
+                    if (file.size > 200 * 1024 * 1024) {
+                        showToast(`${file.name} exceeds 200MB limit`, 'error');
+                        continue;
+                    }
+
+                    // Validate file type
+                    if (!file.name.match(/\.(exe|dll)$/i)) {
+                        showToast(`${file.name} is not a valid file type`, 'error');
+                        continue;
+                    }
                     
-                    // For large files, only send first 10MB
                     let fileToUpload = file;
                     if (file.size > 10 * 1024 * 1024) {
-                        log('Large file - sending first 10MB only');
                         fileToUpload = new File(
                             [file.slice(0, 10 * 1024 * 1024)], 
                             file.name, 
@@ -327,8 +384,6 @@
                     
                     const formData = new FormData();
                     formData.append('file', fileToUpload);
-                    
-                    log('Uploading to server...');
                     
                     const response = await fetch(`${API_URL}/api/extract-icon`, {
                         method: 'POST',
@@ -342,17 +397,14 @@
                     
                     const iconBlob = await response.blob();
                     addIconToPreview(iconBlob, file.name);
-                    log(`✓ Success!`);
+                    showToast(`Extracted icon from ${file.name}`);
                 }
                 
                 if (extractedIcons.length > 0) {
                     previewArea.classList.add('active');
-                    successDiv.textContent = `Successfully extracted ${extractedIcons.length} icon(s)!`;
-                    successDiv.classList.add('active');
                 }
             } catch (error) {
-                log(`❌ Error: ${error.message}`);
-                showError(`Error: ${error.message}`);
+                showToast(error.message, 'error');
             } finally {
                 loading.classList.remove('active');
             }
@@ -364,7 +416,7 @@
             
             extractedIcons.push({
                 blob: blob,
-                name: `${baseName}_icon_150x150.png`
+                name: `${baseName}_150x150.png`
             });
             
             const item = document.createElement('div');
@@ -372,12 +424,16 @@
             item.innerHTML = `
                 <img src="${url}" alt="Icon">
                 <div class="file-name">${baseName}</div>
-                <div class="size-label">150×150</div>
-                <button class="btn" style="margin-top: 10px; padding: 8px 20px; font-size: 14px;">Download</button>
+                <button class="btn download-btn">Download</button>
             `;
             
-            item.querySelector('button').addEventListener('click', () => {
-                downloadBlob(blob, `${baseName}_icon_150x150.png`);
+            item.querySelector('button').addEventListener('click', (e) => {
+                e.stopPropagation();
+                downloadBlob(blob, `${baseName}_150x150.png`);
+            });
+            
+            item.addEventListener('click', () => {
+                downloadBlob(blob, `${baseName}_150x150.png`);
             });
             
             previewGrid.appendChild(item);
@@ -392,6 +448,7 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            showToast(`Downloaded ${fileName}`);
         }
 
         downloadAllBtn.addEventListener('click', async () => {
@@ -408,13 +465,8 @@
             });
             
             const content = await zip.generateAsync({ type: 'blob' });
-            downloadBlob(content, 'extracted_icons_150x150.zip');
+            downloadBlob(content, 'icons_150x150.zip');
         });
-
-        function showError(message) {
-            errorDiv.textContent = message;
-            errorDiv.classList.add('active');
-        }
     </script>
 </body>
 </html>
