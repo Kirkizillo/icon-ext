@@ -396,11 +396,11 @@
                         continue;
                     }
 
-                    if (!file.name.match(/\.(exe|dll)$/i)) {
-                        showToast(`${file.name} is not a valid file type`, 'error');
-                        continue;
+                    if (!file.name.match(/\.(exe|dll|apk|scr|cpl|ocx)$/i)) {
+                    showToast(`${file.name} is not a valid file type`, 'error');
+                    continue;
                     }
-                    
+
                     let fileToUpload = file;
                     if (file.size > 10 * 1024 * 1024) {
                         fileToUpload = new File(
