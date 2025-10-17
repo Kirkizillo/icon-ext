@@ -307,8 +307,8 @@
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📦</div>
             <p class="upload-text">Drop files here or click to browse</p>
-            <p class="upload-hint">.exe, .dll · up to 200MB</p>
-            <input type="file" id="fileInput" accept=".exe,.dll,.apk,.scr,.cpl,.ocx" multiple>
+            <p class="upload-hint">EXE, DLL, SCR, CPL, OCX · up to 200MB</p>
+            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx" multiple>
         </div>
         
         <div class="loading" id="loading">
@@ -396,7 +396,7 @@
                         continue;
                     }
 
-                    if (!file.name.match(/\.(exe|dll|apk|scr|cpl|ocx)$/i)) {
+                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx)$/i)) {
                     showToast(`${file.name} is not a valid file type`, 'error');
                     continue;
                     }
