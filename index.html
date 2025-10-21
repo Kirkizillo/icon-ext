@@ -389,18 +389,23 @@
         async function handleFiles(files) {
             loading.classList.add('active');
             
-            try {
-                for (let file of files) {
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (let file of files) {
+                try {
                     if (file.size > 200 * 1024 * 1024) {
                         showToast(`${file.name} exceeds 200MB limit`, 'error');
+                        errorCount++;
                         continue;
                     }
-
+        
                     if (!file.name.match(/\.(exe|dll|scr|cpl|ocx)$/i)) {
-                    showToast(`${file.name} is not a valid file type`, 'error');
-                    continue;
+                        showToast(`${file.name} is not a valid file type`, 'error');
+                        errorCount++;
+                        continue;
                     }
-
+        
                     let fileToUpload = file;
                     if (file.size > 10 * 1024 * 1024) {
                         fileToUpload = new File(
@@ -420,7 +425,9 @@
                     
                     if (!response.ok) {
                         const error = await response.json();
-                        throw new Error(error.error || 'Failed to extract icon');
+                        showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
+                        errorCount++;
+                        continue; // <-- Changed from throw to continue!
                     }
                     
                     // Get metadata from headers
@@ -435,23 +442,41 @@
                         quality
                     });
                     
+                    successCount++;
+                    
                     // Show toast based on quality
                     if (quality === 'small_source') {
-                        showToast(`Small source icon (${originalSize}) - enhanced`, 'warning');
+                        showToast(`${file.name}: Small source (${originalSize}) - AI enhanced`, 'warning');
                     } else if (quality === 'medium_source') {
-                        showToast(`Medium source icon (${originalSize}) - enhanced`, 'warning');
+                        showToast(`${file.name}: Medium source (${originalSize}) - AI enhanced`, 'warning');
                     } else {
-                        showToast(`High quality icon extracted (${originalSize})`);
+                        showToast(`${file.name}: High quality extracted (${originalSize})`);
                     }
+                    
+                } catch (error) {
+                    // Catch any unexpected errors for this file
+                    console.error(`Error processing ${file.name}:`, error);
+                    showToast(`${file.name}: ${error.message}`, 'error');
+                    errorCount++;
+                    // Continue to next file instead of stopping
                 }
-                
-                if (extractedIcons.length > 0) {
-                    previewArea.classList.add('active');
+            }
+            
+            loading.classList.remove('active');
+            
+            // Show summary if multiple files
+            if (files.length > 1) {
+                if (successCount > 0 && errorCount > 0) {
+                    showToast(`Processed: ${successCount} succeeded, ${errorCount} failed`, 'warning');
+                } else if (successCount > 0) {
+                    showToast(`Successfully extracted ${successCount} icon${successCount > 1 ? 's' : ''}`, 'success');
+                } else if (errorCount > 0) {
+                    showToast(`Failed to extract ${errorCount} icon${errorCount > 1 ? 's' : ''}`, 'error');
                 }
-            } catch (error) {
-                showToast(error.message, 'error');
-            } finally {
-                loading.classList.remove('active');
+            }
+            
+            if (extractedIcons.length > 0) {
+                previewArea.classList.add('active');
             }
         }
 
