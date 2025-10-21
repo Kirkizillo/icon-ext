@@ -407,12 +407,25 @@
                     }
         
                     let fileToUpload = file;
-                    if (file.size > 50 * 1024 * 1024) {
-                        fileToUpload = new File(
-                            [file.slice(0, 50 * 1024 * 1024)],
-                            file.name, 
-                            { type: file.type || 'application/x-msdownload' }
-                        );
+                    
+                    // For ZIP/MSI, send full file (up to 500MB)
+                    if (file.name.match(/\.(zip|msi)$/i)) {
+                        if (file.size > 500 * 1024 * 1024) {
+                            showToast(`${file.name} exceeds 500MB limit`, 'error');
+                            errorCount++;
+                            continue;
+                        }
+                        // Send full archive file
+                        fileToUpload = file;
+                    } else {
+                        // For EXE/DLL/etc, only send first 10MB
+                        if (file.size > 10 * 1024 * 1024) {
+                            fileToUpload = new File(
+                                [file.slice(0, 10 * 1024 * 1024)],
+                                file.name,
+                                { type: file.type || 'application/x-msdownload' }
+                            );
+                        }
                     }
                     
                     const formData = new FormData();
