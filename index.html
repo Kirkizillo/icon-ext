@@ -307,7 +307,7 @@
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📦</div>
             <p class="upload-text">Drop files here or click to browse</p>
-            <p class="upload-hint">EXE, DLL, SCR, CPL, OCX, ZIP, MSI · up to 200MB</p>
+            <p class="upload-hint">EXE, DLL, SCR, CPL, OCX, ZIP, MSI · up to 500MB</p>
             <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.msi" multiple>
         </div>
         
@@ -394,8 +394,8 @@
             
             for (let file of files) {
                 try {
-                    if (file.size > 200 * 1024 * 1024) {
-                        showToast(`${file.name} exceeds 200MB limit`, 'error');
+                    if (file.size > 500 * 1024 * 1024) {
+                        showToast(`${file.name} exceeds 500MB limit`, 'error');
                         errorCount++;
                         continue;
                     }
@@ -407,9 +407,9 @@
                     }
         
                     let fileToUpload = file;
-                    if (file.size > 10 * 1024 * 1024) {
+                    if (file.size > 50 * 1024 * 1024) {
                         fileToUpload = new File(
-                            [file.slice(0, 10 * 1024 * 1024)], 
+                            [file.slice(0, 50 * 1024 * 1024)],
                             file.name, 
                             { type: file.type || 'application/x-msdownload' }
                         );
