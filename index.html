@@ -400,7 +400,7 @@
                         continue;
                     }
         
-                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx)$/i)) {
+                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|msi)$/i)) {
                         showToast(`${file.name} is not a valid file type`, 'error');
                         errorCount++;
                         continue;
