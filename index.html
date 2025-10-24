@@ -451,25 +451,13 @@
                     
                     const iconBlob = await response.blob();
                     
-                    // Get actual filename from Content-Disposition header
-                    const contentDisposition = response.headers.get('Content-Disposition');
-                    let actualFilename = `${file.name.replace(/\.[^/.]+$/, '')}_icon.png`;
+                    // Build filename from output size header (simple and reliable)
+                    const baseName = file.name.replace(/\.[^/.]+$/, '');
+                    const actualFilename = outputSize 
+                        ? `${baseName}_${outputSize.replace('x', 'x')}.png`
+                        : `${baseName}_icon.png`;
                     
-                    if (contentDisposition) {
-                        // Try multiple parsing methods
-                        // Method 1: filename="something.png"
-                        let match = contentDisposition.match(/filename\s*=\s*"([^"]+)"/);
-                        if (!match) {
-                            // Method 2: filename=something.png (no quotes)
-                            match = contentDisposition.match(/filename\s*=\s*([^\s;]+)/);
-                        }
-                        if (match && match[1]) {
-                            actualFilename = match[1].trim().replace(/['"]/g, '');
-                            console.log('Extracted filename:', actualFilename);
-                        } else {
-                            console.warn('Could not parse Content-Disposition:', contentDisposition);
-                        }
-                    }
+                    console.log('Using filename:', actualFilename);  // Debug log
                     
                     addIconToPreview(iconBlob, file.name, {
                         wasUpscaled,
@@ -477,7 +465,7 @@
                         quality,
                         outputSize
                     }, actualFilename);
-                    
+
                     successCount++;
                     
                     // Show toast based on quality
