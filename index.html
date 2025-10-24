@@ -544,13 +544,12 @@
             
             item.querySelector('button').addEventListener('click', (e) => {
                 e.stopPropagation();
-                downloadBlob(blob, `${baseName}_150x150.png`);
+                downloadBlob(blob, actualFilename);  // ✅ Use actual filename from backend
             });
             
             item.addEventListener('click', () => {
-                downloadBlob(blob, `${baseName}_150x150.png`);
-            });
-            
+                downloadBlob(blob, actualFilename);  // ✅ Use actual filename from backend
+            });      
             previewGrid.appendChild(item);
         }
 
