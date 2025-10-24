@@ -447,13 +447,27 @@
                     const wasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
                     const originalSize = response.headers.get('X-Original-Size');
                     const quality = response.headers.get('X-Quality');
+                    const outputSize = response.headers.get('X-Output-Size');
                     
                     const iconBlob = await response.blob();
+                    
+                    // Get actual filename from Content-Disposition header
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let actualFilename = `${file.name.replace(/\.[^/.]+$/, '')}_icon.png`;
+                    
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            actualFilename = filenameMatch[1].replace(/['"]/g, '');
+                        }
+                    }
+                    
                     addIconToPreview(iconBlob, file.name, {
                         wasUpscaled,
                         originalSize,
-                        quality
-                    });
+                        quality,
+                        outputSize
+                    }, actualFilename);
                     
                     successCount++;
                     
@@ -493,13 +507,13 @@
             }
         }
 
-        function addIconToPreview(blob, originalName, metadata) {
+        function addIconToPreview(blob, originalName, metadata, actualFilename) {
             const url = URL.createObjectURL(blob);
             const baseName = originalName.replace(/\.[^/.]+$/, '');
             
             extractedIcons.push({
                 blob: blob,
-                name: `${baseName}_150x150.png`,
+                name: actualFilename || `${baseName}_icon.png`,  // ✅ Use actual filename
                 metadata: metadata
             });
             
@@ -524,7 +538,7 @@
                 <img src="${url}" alt="Icon">
                 <div class="quality-badge ${metadata.quality}" title="${badgeTitle}">${badgeLabel}</div>
                 <div class="file-name">${baseName}</div>
-                <div class="size-info">${metadata.originalSize} → 150x150</div>
+                <div class="size-info">${metadata.originalSize} → ${metadata.outputSize || '150x150'}</div>
                 <button class="btn download-btn">Download</button>
             `;
             
