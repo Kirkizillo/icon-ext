@@ -189,19 +189,25 @@
             letter-spacing: 0.5px;
         }
         
-        .quality-badge.small_source {
+        .quality-badge.low {
             background: rgba(239, 68, 68, 0.2);
             color: #f87171;
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
         
-        .quality-badge.medium_source {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
+        .quality-badge.medium {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
         }
         
-        .quality-badge.high_quality {
+        .quality-badge.enhanced {
+            background: rgba(139, 92, 246, 0.2);
+            color: #8b5cf6;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        
+        .quality-badge.high {
             background: rgba(16, 185, 129, 0.2);
             color: #10b981;
             border: 1px solid rgba(16, 185, 129, 0.3);
@@ -515,19 +521,22 @@
             });
             
             // Generate badge based on quality
-            let badgeLabel = '';
-            let badgeTitle = '';
+            const badges = {
+                'high': 'HIGH QUALITY',
+                'medium': 'MEDIUM QUALITY',
+                'enhanced': 'AI ENHANCED',
+                'low': 'LOW QUALITY'
+            };
             
-            if (metadata.quality === 'small_source') {
-            badgeLabel = '🔴 AI Enhanced';
-            badgeTitle = `Original: ${metadata.originalSize} (AI upscaled for better quality)`;
-            } else if (metadata.quality === 'medium_source') {
-            badgeLabel = '🟡 AI Enhanced';
-            badgeTitle = `Original: ${metadata.originalSize} (AI upscaled)`;
-            } else {
-            badgeLabel = '🟢 High Quality';
-            badgeTitle = `Original: ${metadata.originalSize} (Native quality)`;
-            }
+            const badgeTitles = {
+                'high': `Original ${metadata.originalSize} - Native quality`,
+                'medium': `Original ${metadata.originalSize} - Upscaled from 128px`,
+                'enhanced': `Original ${metadata.originalSize} - AI upscaled`,
+                'low': `Original ${metadata.originalSize} - Small source`
+            };
+            
+            let badgeLabel = badges[metadata.quality] || 'UNKNOWN';
+            let badgeTitle = badgeTitles[metadata.quality] || `Original ${metadata.originalSize}`;
             
             const item = document.createElement('div');
             item.className = 'preview-item';
