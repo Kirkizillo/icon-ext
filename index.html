@@ -165,9 +165,9 @@
             width: 120px;
             height: 120px;
             border-radius: 8px;
-            object-fit: contain;
+            object-fit: cover;  /* ✅ Fills frame without extra space */
             background: rgba(255, 255, 255, 0.05);
-            padding: 10px;
+            padding: 0;  /* ✅ Remove padding - backend handles it */
             margin-bottom: 12px;
         }
         
