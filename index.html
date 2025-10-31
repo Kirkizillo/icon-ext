@@ -510,16 +510,15 @@
             }
         }
 
-                function addIconToPreview(blob, metadata) {
-                    const item = document.createElement('div');
-                    item.className = 'preview-item';
-        
-                    const img = document.createElement('img');
-                    img.src = URL.createObjectURL(blob);
-                    item.appendChild(img);
-        
-                    const badge = document.createElement('div');
-                    const quality = metadata.quality;
+                function addIconToPreview(blob, originalName, metadata, actualFilename) {
+                    const url = URL.createObjectURL(blob);
+                    const baseName = originalName.replace(/\.[^/.]+$/, '');
+                    
+                    extractedIcons.push({
+                        blob: blob,
+                        name: actualFilename || `${baseName}_icon.png`,
+                        metadata: metadata
+                    });
                     
                     const badges = {
                         'high': 'HIGH QUALITY',
@@ -527,30 +526,35 @@
                         'enhanced': 'AI ENHANCED',
                         'low': 'LOW QUALITY'
                     };
-        
-                    badge.textContent = badges[quality] || 'UNKNOWN';
-                    badge.className = `quality-badge ${quality}`; // Applies the correct CSS class
-                    item.appendChild(badge);
-        
-                    const name = document.createElement('div');
-                    name.className = 'file-name';
-                    name.textContent = metadata.filename.split('.').slice(0, -1).join('.');
-                    item.appendChild(name);
-        
-                    const sizeInfo = document.createElement('div');
-                    sizeInfo.className = 'size-info';
-                    sizeInfo.textContent = `${metadata.originalSize} → ${metadata.outputSize}`;
-                    item.appendChild(sizeInfo);
-        
-                    const downloadBtn = document.createElement('button');
-                    downloadBtn.className = 'btn download-btn';
-                    downloadBtn.textContent = 'Download';
-                    downloadBtn.addEventListener('click', (e) => {
+                    
+                    const badgeTitles = {
+                        'high': `Original ${metadata.originalSize} - Native quality`,
+                        'medium': `Original ${metadata.originalSize} - Upscaled from 128px`,
+                        'enhanced': `Original ${metadata.originalSize} - AI upscaled`,
+                        'low': `Original ${metadata.originalSize} - Small source`
+                    };
+                    
+                    let badgeLabel = badges[metadata.quality] || 'UNKNOWN';
+                    let badgeTitle = badgeTitles[metadata.quality] || `Original ${metadata.originalSize}`;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'preview-item';
+                    item.innerHTML = `
+                        <img src="${url}" alt="Icon">
+                        <div class="quality-badge ${metadata.quality}" title="${badgeTitle}">${badgeLabel}</div>
+                        <div class="file-name">${baseName}</div>
+                        <div class="size-info">${metadata.originalSize} → ${metadata.outputSize || '150x150'}</div>
+                        <button class="btn download-btn">Download</button>
+                    `;
+                    
+                    item.querySelector('button').addEventListener('click', (e) => {
                         e.stopPropagation();
-                        downloadBlob(blob, metadata.filename);
+                        downloadBlob(blob, actualFilename);
                     });
-                    item.appendChild(downloadBtn);
-        
+                    
+                    item.addEventListener('click', () => {
+                        downloadBlob(blob, actualFilename);
+                    });      
                     previewGrid.appendChild(item);
                 }
 
