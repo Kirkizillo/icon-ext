@@ -459,14 +459,17 @@
                         clearTimeout(timeoutId);
                     } catch (error) {
                         clearTimeout(timeoutId);
+                        loading.classList.remove('active');
+                        
                         if (error.name === 'AbortError') {
-                            displayError(file.name, 'Processing timeout - large MSI files may take several minutes');
+                            showToast(`${file.name}: Processing timeout - large MSI files may take several minutes`, 'error');
                         } else {
-                            displayError(file.name, 'Upload failed: ' + error.message);
+                            showToast(`${file.name}: Upload failed - ${error.message}`, 'error');
                         }
-                        return;
+                        errorCount++;
+                        continue; // Continue to next file
                     }
-                    
+          
                     if (!response.ok) {
                         const error = await response.json();
                         showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
