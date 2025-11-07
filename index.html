@@ -460,12 +460,19 @@
                         
                         // Move response handling INSIDE try block
                         if (!response.ok) {
-                            const error = await response.json();
-                            showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
+                            let errorMsg = 'Failed to extract icon';
+                            try {
+                                const error = await response.json();
+                                errorMsg = error.error || errorMsg;
+                            } catch (e) {
+                                // Response isn't JSON, use status text
+                                errorMsg = response.statusText || errorMsg;
+                            }
+                            showToast(`${file.name}: ${errorMsg}`, 'error');
                             errorCount++;
                             continue;
                         }
-                        
+
                         // Continue with success handling here...
                         // (keep the rest of the code that processes the successful response)
                         
