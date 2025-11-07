@@ -393,6 +393,14 @@
         });
 
         async function handleFiles(files) {
+            // Warn about large files
+            for (const file of files) {
+                if (file.size > 100 * 1024 * 1024) { // 100MB
+                    console.log(`⚠️ Large file: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) - may take 2-3 minutes`);
+                    showToast(`Processing large file: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`, 'info');
+                }
+            }
+            
             loading.classList.add('active');
             
             let successCount = 0;
@@ -437,10 +445,27 @@
                     const formData = new FormData();
                     formData.append('file', fileToUpload);
                     
-                    const response = await fetch(`${API_URL}/api/extract-icon`, {
-                        method: 'POST',
-                        body: formData
-                    });
+                    // Increase timeout for large files (3 minutes)
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 180000);
+                    
+                    let response;
+                    try {
+                        response = await fetch('/api/extract-icon', {
+                            method: 'POST',
+                            body: formData,
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                    } catch (error) {
+                        clearTimeout(timeoutId);
+                        if (error.name === 'AbortError') {
+                            displayError(file.name, 'Processing timeout - large MSI files may take several minutes');
+                        } else {
+                            displayError(file.name, 'Upload failed: ' + error.message);
+                        }
+                        return;
+                    }
                     
                     if (!response.ok) {
                         const error = await response.json();
