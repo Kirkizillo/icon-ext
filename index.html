@@ -445,7 +445,7 @@
                     const formData = new FormData();
                     formData.append('file', fileToUpload);
                     
-                    const response = await fetch('/api/extract-icon', {
+                    const response = await fetch(`${API_URL}/api/extract-icon`, {
                         method: 'POST',
                         body: formData
                     });
