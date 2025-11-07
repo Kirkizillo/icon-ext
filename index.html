@@ -445,10 +445,28 @@
                     const formData = new FormData();
                     formData.append('file', fileToUpload);
                     
-                    const response = await fetch(`${API_URL}/api/extract-icon`, {
-                        method: 'POST',
-                        body: formData
-                    });
+                    // Add 3-minute timeout for large MSI files
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 180000);
+                    
+                    let response;
+                    try {
+                        response = await fetch(`${API_URL}/api/extract-icon`, {
+                            method: 'POST',
+                            body: formData,
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                    } catch (fetchError) {
+                        clearTimeout(timeoutId);
+                        if (fetchError.name === 'AbortError') {
+                            showToast(`${file.name}: Upload timeout (file too large or slow connection)`, 'error');
+                        } else {
+                            showToast(`${file.name}: ${fetchError.message}`, 'error');
+                        }
+                        errorCount++;
+                        continue;
+                    }
                     
                     if (!response.ok) {
                         const error = await response.json();
