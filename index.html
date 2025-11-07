@@ -457,6 +457,18 @@
                             signal: controller.signal
                         });
                         clearTimeout(timeoutId);
+                        
+                        // Move response handling INSIDE try block
+                        if (!response.ok) {
+                            const error = await response.json();
+                            showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
+                            errorCount++;
+                            continue;
+                        }
+                        
+                        // Continue with success handling here...
+                        // (keep the rest of the code that processes the successful response)
+                        
                     } catch (error) {
                         clearTimeout(timeoutId);
                         loading.classList.remove('active');
@@ -467,14 +479,7 @@
                             showToast(`${file.name}: Upload failed - ${error.message}`, 'error');
                         }
                         errorCount++;
-                        continue; // Continue to next file
-                    }
-          
-                    if (!response.ok) {
-                        const error = await response.json();
-                        showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
-                        errorCount++;
-                        continue; // <-- Changed from throw to continue!
+                        continue;
                     }
                     
                     // Get metadata from headers
