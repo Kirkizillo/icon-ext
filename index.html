@@ -445,46 +445,14 @@
                     const formData = new FormData();
                     formData.append('file', fileToUpload);
                     
-                    // Increase timeout for large files (3 minutes)
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 180000);
+                    const response = await fetch('/api/extract-icon', {
+                        method: 'POST',
+                        body: formData
+                    });
                     
-                    let response;
-                    try {
-                        response = await fetch('/api/extract-icon', {
-                            method: 'POST',
-                            body: formData,
-                            signal: controller.signal
-                        });
-                        clearTimeout(timeoutId);
-                        
-                        // Move response handling INSIDE try block
-                        if (!response.ok) {
-                            let errorMsg = 'Failed to extract icon';
-                            try {
-                                const error = await response.json();
-                                errorMsg = error.error || errorMsg;
-                            } catch (e) {
-                                // Response isn't JSON, use status text
-                                errorMsg = response.statusText || errorMsg;
-                            }
-                            showToast(`${file.name}: ${errorMsg}`, 'error');
-                            errorCount++;
-                            continue;
-                        }
-
-                        // Continue with success handling here...
-                        // (keep the rest of the code that processes the successful response)
-                        
-                    } catch (error) {
-                        clearTimeout(timeoutId);
-                        loading.classList.remove('active');
-                        
-                        if (error.name === 'AbortError') {
-                            showToast(`${file.name}: Processing timeout - large MSI files may take several minutes`, 'error');
-                        } else {
-                            showToast(`${file.name}: Upload failed - ${error.message}`, 'error');
-                        }
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
                         errorCount++;
                         continue;
                     }
