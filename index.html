@@ -519,12 +519,12 @@
                             
                             successCount++;
                             
-                            if (metaQuality === 'small_source') {
-                                showToast(`${file.name}: Small source (${metaOriginalSize}) - `, 'warning');
-                            } else if (metaQuality === 'medium_source') {
-                                showToast(`${file.name}: Medium source (${metaOriginalSize}) - `, 'warning');
+                            if (metaQuality === 'low') {
+                                showToast(`${file.name}: Low quality (${metaOriginalSize}) - AI enhanced`, 'warning');
+                            } else if (metaQuality === 'medium' || metaQuality === 'enhanced') {
+                                showToast(`${file.name}: Medium quality (${metaOriginalSize}) - AI enhanced`, 'warning');
                             } else {
-                                showToast(`${file.name}: High quality extracted (${metaOriginalSize})`, 'success');
+                                showToast(`${file.name}: High quality (${metaOriginalSize})`, 'success');
                             }
                         }
                         
@@ -581,12 +581,12 @@
                         
                         successCount++;
                         
-                        if (exeQuality === 'small_source') {
-                            showToast(`${file.name}: Small source (${exeOriginalSize}) - AI enhanced`, 'warning');
-                        } else if (exeQuality === 'medium_source') {
-                            showToast(`${file.name}: Medium source (${exeOriginalSize}) - AI enhanced`, 'warning');
+                        if (exeQuality === 'low') {
+                            showToast(`${file.name}: Low quality (${exeOriginalSize}) - AI enhanced`, 'warning');
+                        } else if (exeQuality === 'medium' || exeQuality === 'enhanced') {
+                            showToast(`${file.name}: Medium quality (${exeOriginalSize}) - AI enhanced`, 'warning');
                         } else {
-                            showToast(`${file.name}: High quality extracted (${exeOriginalSize})`, 'success');
+                            showToast(`${file.name}: High quality (${exeOriginalSize})`, 'success');
                         }
                     }
                     
