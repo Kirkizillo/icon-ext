@@ -393,11 +393,11 @@
         });
 
         async function handleFiles(files) {
-            // Warn about large files
+            // Warn about large archive files only
             for (const file of files) {
-                if (file.size > 100 * 1024 * 1024) { // 100MB
-                    console.log(`⚠️ Large file: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) - may take 2-3 minutes`);
-                    showToast(`Processing large file: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`, 'info');
+                if (file.size > 100 * 1024 * 1024 && file.name.match(/\.(zip|7z|msi)$/i)) {
+                    console.log(`⚠️ Large archive: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) - may take longer`);
+                    showToast(`Processing large archive: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`, 'info');
                 }
             }
             
