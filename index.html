@@ -520,9 +520,9 @@
                             successCount++;
                             
                             if (metaQuality === 'small_source') {
-                                showToast(`${file.name}: Small source (${metaOriginalSize}) - AI enhanced`, 'warning');
+                                showToast(`${file.name}: Small source (${metaOriginalSize}) - `, 'warning');
                             } else if (metaQuality === 'medium_source') {
-                                showToast(`${file.name}: Medium source (${metaOriginalSize}) - AI enhanced`, 'warning');
+                                showToast(`${file.name}: Medium source (${metaOriginalSize}) - `, 'warning');
                             } else {
                                 showToast(`${file.name}: High quality extracted (${metaOriginalSize})`, 'success');
                             }
@@ -590,40 +590,6 @@
                         }
                     }
                     
-                    // Get metadata from headers
-                    const wasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
-                    const originalSize = response.headers.get('X-Original-Size');
-                    const quality = response.headers.get('X-Quality');
-                    const outputSize = response.headers.get('X-Output-Size');
-                    
-                    const iconBlob = await response.blob();
-                    
-                    // Build filename from output size header (simple and reliable)
-                    const baseName = file.name.replace(/\.[^/.]+$/, '');
-                    const actualFilename = outputSize 
-                        ? `${baseName}_${outputSize.replace('x', 'x')}.png`
-                        : `${baseName}_icon.png`;
-                    
-                    console.log('Using filename:', actualFilename);  // Debug log
-                    
-                    addIconToPreview(iconBlob, file.name, {
-                        wasUpscaled,
-                        originalSize,
-                        quality,
-                        outputSize
-                    }, actualFilename);
-
-                    successCount++;
-                    
-                    // Show toast based on quality
-                    if (quality === 'small_source') {
-                        showToast(`${file.name}: Small source (${originalSize}) - AI enhanced`, 'warning');
-                    } else if (quality === 'medium_source') {
-                        showToast(`${file.name}: Medium source (${originalSize}) - AI enhanced`, 'warning');
-                    } else {
-                        showToast(`${file.name}: High quality extracted (${originalSize})`);
-                    }
-                    
                 } catch (error) {
                     // Catch any unexpected errors for this file
                     console.error(`Error processing ${file.name}:`, error);
@@ -664,7 +630,7 @@
                     const badges = {
                         'high': 'HIGH QUALITY',
                         'medium': 'MEDIUM QUALITY',
-                        'enhanced': 'AI ENHANCED',
+                        'enhanced': '',
                         'low': 'LOW QUALITY'
                     };
                     
