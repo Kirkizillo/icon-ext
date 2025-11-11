@@ -626,9 +626,84 @@
                             showToast(`${file.name}: High quality extracted (${originalSize})`, 'success');
                         }
                         
-                        continue; // Next file
+                                                continue; // Next file
+                    }
+                } else {
+                    // === HANDLE REGULAR EXE/DLL FILES ===
+                    // For EXE/DLL/etc, only send first 10MB
+                    if (file.size > 10 * 1024 * 1024) {
+                        fileToUpload = new File(
+                            [file.slice(0, 10 * 1024 * 1024)],
+                            file.name,
+                            { type: file.type || 'application/x-msdownload' }
+                        );
                     }
                     
+                    const formData = new FormData();
+                    formData.append('file', fileToUpload);
+                    
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 180000);
+                    
+                    let response;
+                    try {
+                        response = await fetch(`${API_URL}/api/extract-icon`, {
+                            method: 'POST',
+                            body: formData,
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                    } catch (fetchError) {
+                        clearTimeout(timeoutId);
+                        if (fetchError.name === 'AbortError') {
+                            showToast(`${file.name}: Upload timeout`, 'error');
+                        } else {
+                            showToast(`${file.name}: ${fetchError.message}`, 'error');
+                        }
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    // Get metadata from headers
+                    const wasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
+                    const originalSize = response.headers.get('X-Original-Size');
+                    const quality = response.headers.get('X-Quality');
+                    const outputSize = response.headers.get('X-Output-Size');
+                    
+                    const iconBlob = await response.blob();
+                    
+                    const baseName = file.name.replace(/\.[^/.]+$/, '');
+                    const actualFilename = outputSize 
+                        ? `${baseName}_${outputSize.replace('x', 'x')}.png`
+                        : `${baseName}_icon.png`;
+                    
+                    console.log('Using filename:', actualFilename);
+                    
+                    addIconToPreview(iconBlob, file.name, {
+                        wasUpscaled,
+                        originalSize,
+                        quality,
+                        outputSize
+                    }, actualFilename);
+                    
+                    successCount++;
+                    
+                    if (quality === 'small_source') {
+                        showToast(`${file.name}: Small source (${originalSize}) - AI enhanced`, 'warning');
+                    } else if (quality === 'medium_source') {
+                        showToast(`${file.name}: Medium source (${originalSize}) - AI enhanced`, 'warning');
+                    } else {
+                        showToast(`${file.name}: High quality extracted (${originalSize})`, 'success');
+                    }
+                }
+
                 } catch (error) {
                     // Catch any unexpected errors for this file
                     console.error(`Error processing ${file.name}:`, error);
