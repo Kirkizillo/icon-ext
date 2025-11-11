@@ -422,91 +422,211 @@
         
                     let fileToUpload = file;
                     
-                    // For ZIP/MSI, send full file (up to 500MB)
-                    if (file.name.match(/\.(zip|msi)$/i)) {
-                        if (file.size > 500 * 1024 * 1024) {
-                            showToast(`${file.name} exceeds 500MB limit`, 'error');
+                    // === SMART ARCHIVE HANDLING WITH 3-PHASE FALLBACK ===
+                    if (file.name.match(/\.(zip|7z|msi)$/i)) {
+                        const originalSize = file.size;
+                        let currentPhase = 1;
+                        let sliceSize = 10 * 1024 * 1024; // 10MB initial slice
+                        
+                        // Adaptive slicing based on format
+                        if (file.name.toLowerCase().endsWith('.msi')) {
+                            sliceSize = 20 * 1024 * 1024; // 20MB for MSI (better success rate)
+                        }
+                        
+                        // === PHASE 1: SMART SLICING ===
+                        console.log(`📦 Phase 1: Trying first ${(sliceSize / 1024 / 1024).toFixed(0)}MB of ${file.name}`);
+                        
+                        let fileToUpload = file;
+                        if (originalSize > sliceSize) {
+                            fileToUpload = new File(
+                                [file.slice(0, sliceSize)],
+                                file.name,
+                                { type: file.type || 'application/zip' }
+                            );
+                        }
+                        
+                        const formData = new FormData();
+                        formData.append('file', fileToUpload);
+                        formData.append('original_size', originalSize);
+                        formData.append('is_sliced', originalSize > sliceSize ? 'true' : 'false');
+                        
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 180000);
+                        
+                        let response;
+                        try {
+                            response = await fetch(`${API_URL}/api/extract-icon`, {
+                                method: 'POST',
+                                body: formData,
+                                signal: controller.signal
+                            });
+                            clearTimeout(timeoutId);
+                        } catch (fetchError) {
+                            clearTimeout(timeoutId);
+                            if (fetchError.name === 'AbortError') {
+                                showToast(`${file.name}: Timeout - file too large or slow connection`, 'error');
+                            } else {
+                                showToast(`${file.name}: ${fetchError.message}`, 'error');
+                            }
                             errorCount++;
                             continue;
                         }
-                        // Send full archive file
-                        fileToUpload = file;
-                    } else {
-                        // For EXE/DLL/etc, only send first 10MB
-                        if (file.size > 10 * 1024 * 1024) {
-                            fileToUpload = new File(
-                                [file.slice(0, 10 * 1024 * 1024)],
-                                file.name,
-                                { type: file.type || 'application/x-msdownload' }
-                            );
-                        }
-                    }
-                    
-                    const formData = new FormData();
-                    formData.append('file', fileToUpload);
-                    
-                    // Add 3-minute timeout for large MSI files
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 180000);
-                    
-                    let response;
-                    try {
-                        response = await fetch(`${API_URL}/api/extract-icon`, {
-                            method: 'POST',
-                            body: formData,
-                            signal: controller.signal
-                        });
-                        clearTimeout(timeoutId);
-                    } catch (fetchError) {
-                        clearTimeout(timeoutId);
-                        if (fetchError.name === 'AbortError') {
-                            showToast(`${file.name}: Upload timeout (file too large or slow connection)`, 'error');
+                        
+                        // Check if Phase 1 succeeded
+                        if (response.ok) {
+                            console.log(`✅ Phase 1 succeeded for ${file.name}`);
+                            // Continue with normal icon processing below...
                         } else {
-                            showToast(`${file.name}: ${fetchError.message}`, 'error');
+                            // Phase 1 failed - check error type
+                            const errorData = await response.json();
+                            
+                            if (errorData.error === 'EXE_NOT_FOUND' || errorData.error === 'INCOMPLETE_ZIP') {
+                                // === PHASE 2: HEADER ANALYSIS ===
+                                console.log(`⚠️ Phase 1 failed, trying Phase 2: Header analysis for ${file.name}`);
+                                showToast(`${file.name}: Analyzing archive structure...`, 'info');
+                                
+                                // Send last part of file for header analysis (ZIP central directory is at end)
+                                let headerChunk;
+                                if (file.name.toLowerCase().endsWith('.zip')) {
+                                    // For ZIP, send last 100KB (contains central directory)
+                                    const headerSize = Math.min(100 * 1024, originalSize);
+                                    headerChunk = new File(
+                                        [file.slice(-headerSize)],
+                                        file.name,
+                                        { type: 'application/zip' }
+                                    );
+                                } else {
+                                    // For MSI, send first chunk again (OLE header is at start)
+                                    headerChunk = fileToUpload;
+                                }
+                                
+                                const headerFormData = new FormData();
+                                headerFormData.append('file', headerChunk);
+                                
+                                let headerResponse;
+                                try {
+                                    headerResponse = await fetch(`${API_URL}/api/analyze-archive`, {
+                                        method: 'POST',
+                                        body: headerFormData
+                                    });
+                                } catch (e) {
+                                    console.log(`✗ Phase 2 failed: ${e.message}`);
+                                    headerResponse = null;
+                                }
+                                
+                                if (headerResponse && headerResponse.ok) {
+                                    const headerData = await headerResponse.json();
+                                    
+                                    if (headerData.found && headerData.exe_location) {
+                                        console.log(`✅ Phase 2: Found EXE at offset ${headerData.exe_location.offset}`);
+                                        showToast(`${file.name}: Found executable, extracting targeted section...`, 'info');
+                                        
+                                        // Extract specific byte range for the executable
+                                        const exeOffset = headerData.exe_location.offset;
+                                        const exeSize = headerData.exe_location.size || 10 * 1024 * 1024;
+                                        const exeEnd = Math.min(exeOffset + exeSize, originalSize);
+                                        
+                                        const exeChunk = new File(
+                                            [file.slice(exeOffset, exeEnd)],
+                                            headerData.exe_location.filename || 'app.exe',
+                                            { type: 'application/x-msdownload' }
+                                        );
+                                        
+                                        const exeFormData = new FormData();
+                                        exeFormData.append('file', exeChunk);
+                                        exeFormData.append('is_direct_exe', 'true');
+                                        
+                                        response = await fetch(`${API_URL}/api/extract-icon`, {
+                                            method: 'POST',
+                                            body: exeFormData
+                                        });
+                                        
+                                        if (response.ok) {
+                                            console.log(`✅ Phase 2 succeeded for ${file.name}`);
+                                            // Continue with icon processing...
+                                        } else {
+                                            console.log(`✗ Phase 2 extraction failed, trying Phase 3`);
+                                        }
+                                    }
+                                }
+                                
+                                // === PHASE 3: FULL UPLOAD FALLBACK ===
+                                if (!response.ok) {
+                                    if (originalSize <= 100 * 1024 * 1024) {
+                                        console.log(`⚠️ Phase 2 failed, trying Phase 3: Full upload for ${file.name}`);
+                                        showToast(`${file.name}: Retrying with full file (${(originalSize / 1024 / 1024).toFixed(1)}MB)...`, 'warning');
+                                        
+                                        const fullFormData = new FormData();
+                                        fullFormData.append('file', file);
+                                        fullFormData.append('is_full_retry', 'true');
+                                        
+                                        try {
+                                            response = await fetch(`${API_URL}/api/extract-icon`, {
+                                                method: 'POST',
+                                                body: fullFormData
+                                            });
+                                            
+                                            if (response.ok) {
+                                                console.log(`✅ Phase 3 succeeded for ${file.name}`);
+                                            }
+                                        } catch (e) {
+                                            console.log(`✗ Phase 3 failed: ${e.message}`);
+                                        }
+                                    } else {
+                                        // === PHASE 4: TOO LARGE - SHOW ERROR ===
+                                        console.log(`❌ File too large: ${(originalSize / 1024 / 1024).toFixed(1)}MB`);
+                                        showToast(`${file.name}: File too large (${(originalSize / 1024 / 1024).toFixed(1)}MB). Executable not in first ${(sliceSize / 1024 / 1024).toFixed(0)}MB. Extract the .exe with 7-Zip and upload it directly.`, 'error');
+                                        errorCount++;
+                                        continue;
+                                    }
+                                }
+                            }
+                            
+                            // Final check - if still not OK, show error
+                            if (!response.ok) {
+                                const finalError = await response.json();
+                                showToast(`${file.name}: ${finalError.error || 'Failed to extract icon'}`, 'error');
+                                errorCount++;
+                                continue;
+                            }
                         }
-                        errorCount++;
-                        continue;
-                    }
-                    
-                    if (!response.ok) {
-                        const error = await response.json();
-                        showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
-                        errorCount++;
-                        continue;
-                    }
-                    
-                    // Get metadata from headers
-                    const wasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
-                    const originalSize = response.headers.get('X-Original-Size');
-                    const quality = response.headers.get('X-Quality');
-                    const outputSize = response.headers.get('X-Output-Size');
-                    
-                    const iconBlob = await response.blob();
-                    
-                    // Build filename from output size header (simple and reliable)
-                    const baseName = file.name.replace(/\.[^/.]+$/, '');
-                    const actualFilename = outputSize 
-                        ? `${baseName}_${outputSize.replace('x', 'x')}.png`
-                        : `${baseName}_icon.png`;
-                    
-                    console.log('Using filename:', actualFilename);  // Debug log
-                    
-                    addIconToPreview(iconBlob, file.name, {
-                        wasUpscaled,
-                        originalSize,
-                        quality,
-                        outputSize
-                    }, actualFilename);
-
-                    successCount++;
-                    
-                    // Show toast based on quality
-                    if (quality === 'small_source') {
-                        showToast(`${file.name}: Small source (${originalSize}) - AI enhanced`, 'warning');
-                    } else if (quality === 'medium_source') {
-                        showToast(`${file.name}: Medium source (${originalSize}) - AI enhanced`, 'warning');
-                    } else {
-                        showToast(`${file.name}: High quality extracted (${originalSize})`);
+                        
+                        // === SUCCESS - PROCESS ICON ===
+                        // Get metadata from headers
+                        const wasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
+                        const originalSize = response.headers.get('X-Original-Size');
+                        const quality = response.headers.get('X-Quality');
+                        const outputSize = response.headers.get('X-Output-Size');
+                        
+                        const iconBlob = await response.blob();
+                        
+                        // Build filename
+                        const baseName = file.name.replace(/\.[^/.]+$/, '');
+                        const actualFilename = outputSize 
+                            ? `${baseName}_${outputSize.replace('x', 'x')}.png`
+                            : `${baseName}_icon.png`;
+                        
+                        console.log('Using filename:', actualFilename);
+                        
+                        addIconToPreview(iconBlob, file.name, {
+                            wasUpscaled,
+                            originalSize,
+                            quality,
+                            outputSize
+                        }, actualFilename);
+                        
+                        successCount++;
+                        
+                        // Show toast based on quality
+                        if (quality === 'small_source') {
+                            showToast(`${file.name}: Small source (${originalSize}) - AI enhanced`, 'warning');
+                        } else if (quality === 'medium_source') {
+                            showToast(`${file.name}: Medium source (${originalSize}) - AI enhanced`, 'warning');
+                        } else {
+                            showToast(`${file.name}: High quality extracted (${originalSize})`, 'success');
+                        }
+                        
+                        continue; // Next file
                     }
                     
                 } catch (error) {
