@@ -313,8 +313,8 @@
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📦</div>
             <p class="upload-text">Drop files here or click to browse</p>
-            <p class="upload-hint">EXE, DLL, SCR, CPL, OCX, ZIP, 7Z, MSI · up to 500MB</p>
-            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi" multiple>
+            <p class="upload-hint">EXE/DLL/SCR • ZIP/7Z/MSI • PNG/JPG/ICO/WEBP • All formats supported</p>
+            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi,.png,.jpg,.jpeg,.ico,.webp" multiple>
         </div>
         
         <div class="loading" id="loading">
@@ -414,13 +414,58 @@
                         continue;
                     }
         
-                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi)$/i)) {
+                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi|png|jpg|jpeg|ico|webp)$/i)) {
                         showToast(`${file.name} is not a valid file type`, 'error');
                         errorCount++;
                         continue;
                     }
         
                     let fileToUpload = file;
+
+                    // === IMAGE HANDLING (PNG/JPG/ICO/WEBP) ===
+                    if (file.name.match(/\.(png|jpg|jpeg|ico|webp)$/i)) {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        
+                        try {
+                            const response = await fetch(`${API_URL}/api/process-image`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            if (!response.ok) {
+                                const error = await response.json();
+                                showToast(`${file.name}: ${error.error || 'Failed to process image'}`, 'error');
+                                errorCount++;
+                                continue;
+                            }
+                            
+                            const imgOriginalSize = response.headers.get('X-Original-Size');
+                            const imgQuality = response.headers.get('X-Quality');
+                            const imgOutputSize = response.headers.get('X-Output-Size');
+                            
+                            const iconBlob = await response.blob();
+                            const baseName = file.name.replace(/\.[^/.]+$/, '');
+                            const actualFilename = imgOutputSize ? `${baseName}_${imgOutputSize}.png` : `${baseName}_150x150.png`;
+                            
+                            addIconToPreview(iconBlob, file.name, {
+                                wasUpscaled: true,
+                                originalSize: imgOriginalSize,
+                                quality: imgQuality,
+                                outputSize: imgOutputSize
+                            }, actualFilename);
+                            
+                            successCount++;
+                            showToast(`${file.name}: Processed (${imgOriginalSize})`, 'success');
+                            
+                            continue; // Skip to next file
+                            
+                        } catch (e) {
+                            showToast(`${file.name}: ${e.message}`, 'error');
+                            errorCount++;
+                            continue;
+                        }
+                    }
                     
                     // === 3-PHASE ARCHIVE HANDLING ===
                     if (file.name.match(/\.(zip|7z|msi)$/i)) {
