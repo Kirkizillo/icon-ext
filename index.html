@@ -248,7 +248,62 @@
             color: #b0b0b0;
             font-size: 14px;
         }
-        
+
+        .progress-container {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin: 16px auto 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-detail {
+            color: #707070;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .preview-item.failed {
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .preview-item.failed:hover {
+            border-color: rgba(239, 68, 68, 0.5);
+            transform: none;
+            cursor: default;
+        }
+
+        .failed-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .error-text {
+            font-size: 10px;
+            color: #f87171;
+            margin-top: 4px;
+            word-break: break-word;
+            max-height: 40px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .toast {
             position: fixed;
             top: 20px;
@@ -291,17 +346,115 @@
             margin-top: 4px;
         }
         
+        .shortcuts-hint {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 11px;
+            color: #505050;
+        }
+
+        .shortcuts-hint kbd {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 0 2px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
         @media (max-width: 768px) {
+            body {
+                padding: 12px;
+                align-items: flex-start;
+            }
+
             .container {
-                padding: 24px;
+                padding: 20px;
+                border-radius: 12px;
             }
-            
+
             h1 {
-                font-size: 24px;
+                font-size: 22px;
+                margin-bottom: 20px;
             }
-            
+
+            .upload-area {
+                padding: 40px 20px;
+            }
+
+            .upload-icon {
+                font-size: 48px;
+            }
+
+            .upload-text {
+                font-size: 14px;
+            }
+
+            .upload-hint {
+                font-size: 11px;
+                line-height: 1.4;
+            }
+
             .preview-grid {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 12px;
+            }
+
+            .preview-item {
+                padding: 16px 12px;
+            }
+
+            .preview-item img {
+                width: 80px;
+                height: 80px;
+            }
+
+            .quality-badge {
+                font-size: 9px;
+                padding: 3px 8px;
+            }
+
+            .file-name {
+                font-size: 11px;
+            }
+
+            .btn {
+                padding: 10px 24px;
+                font-size: 13px;
+            }
+
+            .toast {
+                left: 12px;
+                right: 12px;
+                max-width: none;
+                transform: translateY(-100px);
+            }
+
+            .toast.show {
+                transform: translateY(0);
+            }
+
+            .shortcuts-hint {
+                display: none;
+            }
+
+            .failed-icon {
+                font-size: 36px;
+            }
+
+            .progress-container {
+                width: 160px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .preview-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .preview-header {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
             }
         }
     </style>
@@ -316,10 +469,15 @@
             <p class="upload-hint">EXE/DLL/SCR • ZIP/7Z/MSI • PNG/JPG/ICO/WEBP/ICNS • All formats supported</p>
             <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi,.png,.jpg,.jpeg,.ico,.webp,.icns" multiple>
         </div>
+        <p class="shortcuts-hint"><kbd>Ctrl+V</kbd> Paste image • <kbd>Ctrl+O</kbd> Open • <kbd>Ctrl+S</kbd> Download • <kbd>Esc</kbd> Clear</p>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p class="loading-text">Extracting icons...</p>
+            <p class="loading-text" id="loadingText">Extracting icons...</p>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <p class="progress-detail" id="progressDetail"></p>
         </div>
         
         <div class="preview-area" id="previewArea">
@@ -343,11 +501,16 @@
         const previewArea = document.getElementById('previewArea');
         const previewGrid = document.getElementById('previewGrid');
         const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressDetail = document.getElementById('progressDetail');
         const downloadAllBtn = document.getElementById('downloadAll');
         const clearBtn = document.getElementById('clearBtn');
         const toast = document.getElementById('toast');
-        
+
         let extractedIcons = [];
+        let failedFiles = []; // Track failed files with error details
         const API_URL = 'https://kirkizillo.pythonanywhere.com';
 
         function showToast(message, type = 'success') {
@@ -358,67 +521,128 @@
             }, 3000);
         }
 
+        function updateProgress(current, total, filename) {
+            const percent = Math.round((current / total) * 100);
+            progressBar.style.width = `${percent}%`;
+            progressDetail.textContent = `${current} of ${total}: ${filename}`;
+            loadingText.textContent = total > 1 ? `Processing files...` : `Extracting icon...`;
+        }
+
+        function resetProgress() {
+            progressBar.style.width = '0%';
+            progressDetail.textContent = '';
+            progressContainer.classList.remove('active');
+            loadingText.textContent = 'Extracting icons...';
+        }
+
         uploadArea.addEventListener('click', () => fileInput.click());
-        
+
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
         });
-        
+
         uploadArea.addEventListener('dragleave', () => {
             uploadArea.classList.remove('dragover');
         });
-        
+
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
             handleFiles(e.dataTransfer.files);
         });
-        
+
         fileInput.addEventListener('change', (e) => {
             handleFiles(e.target.files);
         });
 
         clearBtn.addEventListener('click', () => {
             extractedIcons = [];
+            failedFiles = [];
             previewGrid.innerHTML = '';
             previewArea.classList.remove('active');
             showToast('Cleared all icons');
         });
 
+        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            // ESC - Clear all
             if (e.key === 'Escape' && extractedIcons.length > 0) {
                 clearBtn.click();
+            }
+
+            // Ctrl+O or Cmd+O - Open file picker
+            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                e.preventDefault();
+                fileInput.click();
+            }
+
+            // Ctrl+S or Cmd+S - Download all (when icons exist)
+            if ((e.ctrlKey || e.metaKey) && e.key === 's' && extractedIcons.length > 0) {
+                e.preventDefault();
+                downloadAllBtn.click();
+            }
+        });
+
+        // Ctrl+V - Paste image from clipboard
+        document.addEventListener('paste', async (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            const imageFiles = [];
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) {
+                        // Create a new file with a proper name
+                        const ext = file.type.split('/')[1] || 'png';
+                        const newFile = new File([file], `pasted_image.${ext}`, { type: file.type });
+                        imageFiles.push(newFile);
+                    }
+                }
+            }
+
+            if (imageFiles.length > 0) {
+                showToast('Processing pasted image...', 'success');
+                handleFiles(imageFiles);
             }
         });
 
         async function handleFiles(files) {
             const isBatch = files.length > 1;
+            failedFiles = []; // Reset failed files
 
-            // For batch uploads, show a single "processing" message
+            // Show progress bar for batch uploads
             if (isBatch) {
-                showToast(`Processing ${files.length} files...`, 'success');
+                progressContainer.classList.add('active');
             }
 
             loading.classList.add('active');
 
             let successCount = 0;
             let errorCount = 0;
-            
+            let fileIndex = 0;
+            const totalFiles = files.length;
+
             for (let file of files) {
+                fileIndex++;
+                updateProgress(fileIndex, totalFiles, file.name);
+
                 try {
                     if (file.size > 500 * 1024 * 1024) {
                         if (!isBatch) showToast(`${file.name} exceeds 500MB limit`, 'error');
+                        failedFiles.push({ name: file.name, error: 'File exceeds 500MB limit' });
                         errorCount++;
                         continue;
                     }
 
                     if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi|png|jpg|jpeg|ico|webp|icns)$/i)) {
                         if (!isBatch) showToast(`${file.name} is not a valid file type`, 'error');
+                        failedFiles.push({ name: file.name, error: 'Unsupported file type' });
                         errorCount++;
                         continue;
                     }
-        
+
                     let fileToUpload = file;
 
                     // === IMAGE HANDLING (PNG/JPG/ICO/WEBP/ICNS) ===
@@ -434,7 +658,9 @@
 
                             if (!response.ok) {
                                 const error = await response.json();
-                                if (!isBatch) showToast(`${file.name}: ${error.error || 'Failed to process image'}`, 'error');
+                                const errorMsg = error.error || 'Failed to process image';
+                                if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
+                                failedFiles.push({ name: file.name, error: errorMsg });
                                 errorCount++;
                                 continue;
                             }
@@ -461,11 +687,12 @@
 
                         } catch (e) {
                             if (!isBatch) showToast(`${file.name}: ${e.message}`, 'error');
+                            failedFiles.push({ name: file.name, error: e.message });
                             errorCount++;
                             continue;
                         }
                     }
-                    
+
                     // === 3-PHASE ARCHIVE HANDLING ===
                     if (file.name.match(/\.(zip|7z|msi)$/i)) {
                         const archiveSize = file.size;
@@ -495,6 +722,7 @@
                         } catch (fetchError) {
                             clearTimeout(timeoutId);
                             if (!isBatch) showToast(`${file.name}: ${fetchError.message}`, 'error');
+                            failedFiles.push({ name: file.name, error: fetchError.message });
                             errorCount++;
                             continue;
                         }
@@ -522,21 +750,28 @@
                                         console.log(`✅ Phase 2 succeeded`);
                                     } else {
                                         const finalError = await response.json();
-                                        if (!isBatch) showToast(`${file.name}: ${finalError.error || 'Failed to extract icon'}`, 'error');
+                                        const errorMsg = finalError.error || 'Failed to extract icon';
+                                        if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
+                                        failedFiles.push({ name: file.name, error: errorMsg });
                                         errorCount++;
                                         continue;
                                     }
                                 } catch (e) {
                                     if (!isBatch) showToast(`${file.name}: ${e.message}`, 'error');
+                                    failedFiles.push({ name: file.name, error: e.message });
                                     errorCount++;
                                     continue;
                                 }
                             } else if (archiveSize > 100 * 1024 * 1024) {
-                                if (!isBatch) showToast(`${file.name}: File too large. Extract the .exe manually.`, 'error');
+                                const errorMsg = 'File too large. Extract the .exe manually.';
+                                if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
+                                failedFiles.push({ name: file.name, error: errorMsg });
                                 errorCount++;
                                 continue;
                             } else {
-                                if (!isBatch) showToast(`${file.name}: ${errorData.error || 'Failed to extract icon'}`, 'error');
+                                const errorMsg = errorData.error || 'Failed to extract icon';
+                                if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
+                                failedFiles.push({ name: file.name, error: errorMsg });
                                 errorCount++;
                                 continue;
                             }
@@ -596,13 +831,16 @@
                         } catch (fetchError) {
                             clearTimeout(timeoutId);
                             if (!isBatch) showToast(`${file.name}: ${fetchError.message}`, 'error');
+                            failedFiles.push({ name: file.name, error: fetchError.message });
                             errorCount++;
                             continue;
                         }
-                        
+
                         if (!response.ok) {
                             const error = await response.json();
-                            if (!isBatch) showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
+                            const errorMsg = error.error || 'Failed to extract icon';
+                            if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
+                            failedFiles.push({ name: file.name, error: errorMsg });
                             errorCount++;
                             continue;
                         }
@@ -641,14 +879,16 @@
                     // Catch any unexpected errors for this file
                     console.error(`Error processing ${file.name}:`, error);
                     if (!isBatch) showToast(`${file.name}: ${error.message}`, 'error');
+                    failedFiles.push({ name: file.name, error: error.message });
                     errorCount++;
                     // Continue to next file instead of stopping
                 }
             }
 
             loading.classList.remove('active');
+            resetProgress();
 
-            // Show summary for batch uploads, or final message for single file
+            // Show summary for batch uploads
             if (files.length > 1) {
                 if (successCount > 0 && errorCount > 0) {
                     showToast(`Processed: ${successCount} succeeded, ${errorCount} failed`, 'warning');
@@ -657,11 +897,33 @@
                 } else if (errorCount > 0) {
                     showToast(`Failed to extract ${errorCount} icon${errorCount > 1 ? 's' : ''}`, 'error');
                 }
+
+                // Show failed files details in console and optionally in UI
+                if (failedFiles.length > 0) {
+                    console.log('Failed files:', failedFiles);
+                    // Add failed items to the preview grid
+                    failedFiles.forEach(f => addFailedItemToPreview(f.name, f.error));
+                }
             }
-            
-            if (extractedIcons.length > 0) {
+
+            if (extractedIcons.length > 0 || failedFiles.length > 0) {
                 previewArea.classList.add('active');
             }
+        }
+
+        function addFailedItemToPreview(filename, error) {
+            const baseName = filename.replace(/\.[^/.]+$/, '');
+
+            const item = document.createElement('div');
+            item.className = 'preview-item failed';
+            item.innerHTML = `
+                <div class="failed-icon">⚠️</div>
+                <div class="quality-badge low" title="${error}">FAILED</div>
+                <div class="file-name">${baseName}</div>
+                <div class="error-text">${error}</div>
+            `;
+
+            previewGrid.appendChild(item);
         }
 
                 function addIconToPreview(blob, originalName, metadata, actualFilename) {
