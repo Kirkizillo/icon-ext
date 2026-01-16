@@ -313,8 +313,8 @@
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📦</div>
             <p class="upload-text">Drop files here or click to browse</p>
-            <p class="upload-hint">EXE/DLL/SCR • ZIP/7Z/MSI • PNG/JPG/ICO/WEBP • All formats supported</p>
-            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi,.png,.jpg,.jpeg,.ico,.webp" multiple>
+            <p class="upload-hint">EXE/DLL/SCR • ZIP/7Z/MSI • PNG/JPG/ICO/WEBP/ICNS • All formats supported</p>
+            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi,.png,.jpg,.jpeg,.ico,.webp,.icns" multiple>
         </div>
         
         <div class="loading" id="loading">
@@ -393,75 +393,74 @@
         });
 
         async function handleFiles(files) {
-            // Warn about large archive files only
-            for (const file of files) {
-                if (file.size > 100 * 1024 * 1024 && file.name.match(/\.(zip|7z|msi)$/i)) {
-                    console.log(`⚠️ Large archive: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) - may take longer`);
-                    showToast(`Processing large archive: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`, 'info');
-                }
+            const isBatch = files.length > 1;
+
+            // For batch uploads, show a single "processing" message
+            if (isBatch) {
+                showToast(`Processing ${files.length} files...`, 'success');
             }
-            
+
             loading.classList.add('active');
-            
+
             let successCount = 0;
             let errorCount = 0;
             
             for (let file of files) {
                 try {
                     if (file.size > 500 * 1024 * 1024) {
-                        showToast(`${file.name} exceeds 500MB limit`, 'error');
+                        if (!isBatch) showToast(`${file.name} exceeds 500MB limit`, 'error');
                         errorCount++;
                         continue;
                     }
-        
-                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi|png|jpg|jpeg|ico|webp)$/i)) {
-                        showToast(`${file.name} is not a valid file type`, 'error');
+
+                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi|png|jpg|jpeg|ico|webp|icns)$/i)) {
+                        if (!isBatch) showToast(`${file.name} is not a valid file type`, 'error');
                         errorCount++;
                         continue;
                     }
         
                     let fileToUpload = file;
 
-                    // === IMAGE HANDLING (PNG/JPG/ICO/WEBP) ===
-                    if (file.name.match(/\.(png|jpg|jpeg|ico|webp)$/i)) {
+                    // === IMAGE HANDLING (PNG/JPG/ICO/WEBP/ICNS) ===
+                    if (file.name.match(/\.(png|jpg|jpeg|ico|webp|icns)$/i)) {
                         const formData = new FormData();
                         formData.append('file', file);
-                        
+
                         try {
                             const response = await fetch(`${API_URL}/api/process-image`, {
                                 method: 'POST',
                                 body: formData
                             });
-                            
+
                             if (!response.ok) {
                                 const error = await response.json();
-                                showToast(`${file.name}: ${error.error || 'Failed to process image'}`, 'error');
+                                if (!isBatch) showToast(`${file.name}: ${error.error || 'Failed to process image'}`, 'error');
                                 errorCount++;
                                 continue;
                             }
-                            
+
                             const imgOriginalSize = response.headers.get('X-Original-Size');
                             const imgQuality = response.headers.get('X-Quality');
                             const imgOutputSize = response.headers.get('X-Output-Size');
-                            
+
                             const iconBlob = await response.blob();
                             const baseName = file.name.replace(/\.[^/.]+$/, '');
                             const actualFilename = imgOutputSize ? `${baseName}_${imgOutputSize}.png` : `${baseName}_150x150.png`;
-                            
+
                             addIconToPreview(iconBlob, file.name, {
                                 wasUpscaled: true,
                                 originalSize: imgOriginalSize,
                                 quality: imgQuality,
                                 outputSize: imgOutputSize
                             }, actualFilename);
-                            
+
                             successCount++;
-                            showToast(`${file.name}: Processed (${imgOriginalSize})`, 'success');
-                            
+                            if (!isBatch) showToast(`${file.name}: Processed (${imgOriginalSize})`, 'success');
+
                             continue; // Skip to next file
-                            
+
                         } catch (e) {
-                            showToast(`${file.name}: ${e.message}`, 'error');
+                            if (!isBatch) showToast(`${file.name}: ${e.message}`, 'error');
                             errorCount++;
                             continue;
                         }
@@ -495,50 +494,49 @@
                             clearTimeout(timeoutId);
                         } catch (fetchError) {
                             clearTimeout(timeoutId);
-                            showToast(`${file.name}: ${fetchError.message}`, 'error');
+                            if (!isBatch) showToast(`${file.name}: ${fetchError.message}`, 'error');
                             errorCount++;
                             continue;
                         }
-                        
+
                         // Check Phase 1 result
                         if (response.ok) {
                             phase1Success = true;
                         } else {
                             const errorData = await response.json();
-                            
+
                             // PHASE 2: Try full upload if file < 100MB and Phase 1 failed
                             if ((errorData.error === 'EXE_NOT_FOUND' || errorData.error === 'INCOMPLETE_ZIP') && archiveSize <= 100 * 1024 * 1024) {
                                 console.log(`⚠️ Phase 1 failed, trying Phase 2: Full upload`);
-                                showToast(`${file.name}: Retrying with full file...`, 'warning');
-                                
+
                                 const fullFormData = new FormData();
                                 fullFormData.append('file', file);
-                                
+
                                 try {
                                     response = await fetch(`${API_URL}/api/extract-icon`, {
                                         method: 'POST',
                                         body: fullFormData
                                     });
-                                    
+
                                     if (response.ok) {
                                         console.log(`✅ Phase 2 succeeded`);
                                     } else {
                                         const finalError = await response.json();
-                                        showToast(`${file.name}: ${finalError.error || 'Failed to extract icon'}`, 'error');
+                                        if (!isBatch) showToast(`${file.name}: ${finalError.error || 'Failed to extract icon'}`, 'error');
                                         errorCount++;
                                         continue;
                                     }
                                 } catch (e) {
-                                    showToast(`${file.name}: ${e.message}`, 'error');
+                                    if (!isBatch) showToast(`${file.name}: ${e.message}`, 'error');
                                     errorCount++;
                                     continue;
                                 }
                             } else if (archiveSize > 100 * 1024 * 1024) {
-                                showToast(`${file.name}: File too large (${(archiveSize/1024/1024).toFixed(1)}MB). Extract the .exe with 7-Zip and upload it directly.`, 'error');
+                                if (!isBatch) showToast(`${file.name}: File too large. Extract the .exe manually.`, 'error');
                                 errorCount++;
                                 continue;
                             } else {
-                                showToast(`${file.name}: ${errorData.error || 'Failed to extract icon'}`, 'error');
+                                if (!isBatch) showToast(`${file.name}: ${errorData.error || 'Failed to extract icon'}`, 'error');
                                 errorCount++;
                                 continue;
                             }
@@ -563,28 +561,30 @@
                             }, actualFilename);
                             
                             successCount++;
-                            
-                            if (metaQuality === 'low') {
-                                showToast(`${file.name}: Low quality (${metaOriginalSize}) - AI enhanced`, 'warning');
-                            } else if (metaQuality === 'medium' || metaQuality === 'enhanced') {
-                                showToast(`${file.name}: Medium quality (${metaOriginalSize}) - AI enhanced`, 'warning');
-                            } else {
-                                showToast(`${file.name}: High quality (${metaOriginalSize})`, 'success');
+
+                            if (!isBatch) {
+                                if (metaQuality === 'low') {
+                                    showToast(`${file.name}: Low quality - AI enhanced`, 'warning');
+                                } else if (metaQuality === 'medium' || metaQuality === 'enhanced') {
+                                    showToast(`${file.name}: Enhanced (${metaOriginalSize})`, 'success');
+                                } else {
+                                    showToast(`${file.name}: High quality (${metaOriginalSize})`, 'success');
+                                }
                             }
                         }
-                        
+
                     } else {
                         // REGULAR EXE HANDLING
                         if (file.size > 10 * 1024 * 1024) {
                             fileToUpload = new File([file.slice(0, 10 * 1024 * 1024)], file.name, { type: file.type || 'application/x-msdownload' });
                         }
-                        
+
                         const formData = new FormData();
                         formData.append('file', fileToUpload);
-                        
+
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 180000);
-                        
+
                         let response;
                         try {
                             response = await fetch(`${API_URL}/api/extract-icon`, {
@@ -595,58 +595,60 @@
                             clearTimeout(timeoutId);
                         } catch (fetchError) {
                             clearTimeout(timeoutId);
-                            showToast(`${file.name}: ${fetchError.message}`, 'error');
+                            if (!isBatch) showToast(`${file.name}: ${fetchError.message}`, 'error');
                             errorCount++;
                             continue;
                         }
                         
                         if (!response.ok) {
                             const error = await response.json();
-                            showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
+                            if (!isBatch) showToast(`${file.name}: ${error.error || 'Failed to extract icon'}`, 'error');
                             errorCount++;
                             continue;
                         }
-                        
+
                         // Process EXE icon
                         const exeWasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
                         const exeOriginalSize = response.headers.get('X-Original-Size');
                         const exeQuality = response.headers.get('X-Quality');
                         const exeOutputSize = response.headers.get('X-Output-Size');
-                        
+
                         const iconBlob = await response.blob();
                         const baseName = file.name.replace(/\.[^/.]+$/, '');
                         const actualFilename = exeOutputSize ? `${baseName}_${exeOutputSize.replace('x', 'x')}.png` : `${baseName}_icon.png`;
-                        
+
                         addIconToPreview(iconBlob, file.name, {
                             wasUpscaled: exeWasUpscaled,
                             originalSize: exeOriginalSize,
                             quality: exeQuality,
                             outputSize: exeOutputSize
                         }, actualFilename);
-                        
+
                         successCount++;
-                        
-                        if (exeQuality === 'low') {
-                            showToast(`${file.name}: Low quality (${exeOriginalSize}) - AI enhanced`, 'warning');
-                        } else if (exeQuality === 'medium' || exeQuality === 'enhanced') {
-                            showToast(`${file.name}: Medium quality (${exeOriginalSize}) - AI enhanced`, 'warning');
-                        } else {
-                            showToast(`${file.name}: High quality (${exeOriginalSize})`, 'success');
+
+                        if (!isBatch) {
+                            if (exeQuality === 'low') {
+                                showToast(`${file.name}: Low quality - AI enhanced`, 'warning');
+                            } else if (exeQuality === 'medium' || exeQuality === 'enhanced') {
+                                showToast(`${file.name}: Enhanced (${exeOriginalSize})`, 'success');
+                            } else {
+                                showToast(`${file.name}: High quality (${exeOriginalSize})`, 'success');
+                            }
                         }
                     }
-                    
+
                 } catch (error) {
                     // Catch any unexpected errors for this file
                     console.error(`Error processing ${file.name}:`, error);
-                    showToast(`${file.name}: ${error.message}`, 'error');
+                    if (!isBatch) showToast(`${file.name}: ${error.message}`, 'error');
                     errorCount++;
                     // Continue to next file instead of stopping
                 }
             }
-            
+
             loading.classList.remove('active');
-            
-            // Show summary if multiple files
+
+            // Show summary for batch uploads, or final message for single file
             if (files.length > 1) {
                 if (successCount > 0 && errorCount > 0) {
                     showToast(`Processed: ${successCount} succeeded, ${errorCount} failed`, 'warning');
@@ -674,26 +676,28 @@
                     
                     const badges = {
                         'high': 'HIGH QUALITY',
-                        'medium': 'MEDIUM QUALITY',
-                        'enhanced': '',
+                        'medium': 'MEDIUM',
+                        'enhanced': 'ENHANCED',
                         'low': 'LOW QUALITY'
                     };
-                    
+
                     const badgeTitles = {
                         'high': `Original ${metadata.originalSize} - Native quality`,
-                        'medium': `Original ${metadata.originalSize} - Upscaled from 128px`,
+                        'medium': `Original ${metadata.originalSize} - Medium resolution`,
                         'enhanced': `Original ${metadata.originalSize} - AI upscaled`,
-                        'low': `Original ${metadata.originalSize} - Small source`
+                        'low': `Original ${metadata.originalSize} - Small source, upscaled`
                     };
-                    
-                    let badgeLabel = badges[metadata.quality] || 'UNKNOWN';
-                    let badgeTitle = badgeTitles[metadata.quality] || `Original ${metadata.originalSize}`;
+
+                    // Default to 'medium' if quality is unknown or missing
+                    const quality = metadata.quality || 'medium';
+                    let badgeLabel = badges[quality] || badges['medium'];
+                    let badgeTitle = badgeTitles[quality] || `Original ${metadata.originalSize}`;
                     
                     const item = document.createElement('div');
                     item.className = 'preview-item';
                     item.innerHTML = `
                         <img src="${url}" alt="Icon">
-                        <div class="quality-badge ${metadata.quality}" title="${badgeTitle}">${badgeLabel}</div>
+                        <div class="quality-badge ${quality}" title="${badgeTitle}">${badgeLabel}</div>
                         <div class="file-name">${baseName}</div>
                         <div class="size-info">${metadata.originalSize} → ${metadata.outputSize || '150x150'}</div>
                         <button class="btn download-btn">Download</button>
