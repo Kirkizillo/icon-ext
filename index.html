@@ -810,10 +810,14 @@
 
                     } else {
                         // REGULAR EXE HANDLING
-                        // No slicing - backend uses file-based extraction for large files
+                        // Phase 1: Try with 50MB slice (fast for most files)
+                        let exeFileToUpload = fileToUpload;
+                        if (file.size > 50 * 1024 * 1024) {
+                            exeFileToUpload = new File([file.slice(0, 50 * 1024 * 1024)], file.name, { type: file.type || 'application/x-msdownload' });
+                        }
 
                         const formData = new FormData();
-                        formData.append('file', fileToUpload);
+                        formData.append('file', exeFileToUpload);
 
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 180000);
@@ -832,6 +836,35 @@
                             failedFiles.push({ name: file.name, error: fetchError.message });
                             errorCount++;
                             continue;
+                        }
+
+                        // Phase 2: If server says we need full upload, retry with full file
+                        if (!response.ok && file.size > 50 * 1024 * 1024) {
+                            const errorData = await response.json().catch(() => ({}));
+                            if (errorData.needsFullUpload) {
+                                if (!isBatch) showToast(`${file.name}: Large file, uploading full file...`, 'info');
+
+                                const fullFormData = new FormData();
+                                fullFormData.append('file', file);
+
+                                const fullController = new AbortController();
+                                const fullTimeoutId = setTimeout(() => fullController.abort(), 600000); // 10 min for large files
+
+                                try {
+                                    response = await fetch(`${API_URL}/api/extract-icon?fullUpload=true`, {
+                                        method: 'POST',
+                                        body: fullFormData,
+                                        signal: fullController.signal
+                                    });
+                                    clearTimeout(fullTimeoutId);
+                                } catch (fetchError) {
+                                    clearTimeout(fullTimeoutId);
+                                    if (!isBatch) showToast(`${file.name}: ${fetchError.message}`, 'error');
+                                    failedFiles.push({ name: file.name, error: fetchError.message });
+                                    errorCount++;
+                                    continue;
+                                }
+                            }
                         }
 
                         if (!response.ok) {
