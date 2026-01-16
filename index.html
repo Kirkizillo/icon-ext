@@ -810,10 +810,7 @@
 
                     } else {
                         // REGULAR EXE HANDLING
-                        // For large EXE files, slice to 50MB - icon resources can be deep in installers
-                        if (file.size > 50 * 1024 * 1024) {
-                            fileToUpload = new File([file.slice(0, 50 * 1024 * 1024)], file.name, { type: file.type || 'application/x-msdownload' });
-                        }
+                        // No slicing - backend uses file-based extraction for large files
 
                         const formData = new FormData();
                         formData.append('file', fileToUpload);
