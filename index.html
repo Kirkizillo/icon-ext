@@ -705,7 +705,7 @@
 
                     // === ANDROID APK/XAPK HANDLING (No slicing - need full file) ===
                     if (file.name.match(/\.(apk|xapk)$/i)) {
-                        console.log(`📱 Processing Android file: ${file.name}`);
+                        console.log(`📱 Processing Android file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
                         const formData = new FormData();
                         formData.append('file', file);  // Upload complete file
 
@@ -713,11 +713,13 @@
                         const timeoutId = setTimeout(() => controller.abort(), 180000);
 
                         try {
+                            console.log(`Uploading ${file.name} to ${API_URL}/api/extract-icon...`);
                             const response = await fetch(`${API_URL}/api/extract-icon`, {
                                 method: 'POST',
                                 body: formData,
                                 signal: controller.signal
                             });
+                            console.log(`Response received for ${file.name}: ${response.status}`);
                             clearTimeout(timeoutId);
 
                             if (response.ok) {
@@ -747,8 +749,11 @@
                             }
                         } catch (error) {
                             clearTimeout(timeoutId);
-                            const errorMsg = error.name === 'AbortError' ? 'Request timeout' : error.message;
-                            console.error(`Error processing ${file.name}:`, errorMsg);
+                            console.error(`Fetch error for ${file.name}:`, error);
+                            const errorMsg = error.name === 'AbortError' ? 'Request timeout (3 min)' :
+                                            error.message === 'Failed to fetch' ? 'Network error or file too large' :
+                                            error.message;
+                            console.error(`Error processing ${file.name}:`, errorMsg, error);
                             if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
                             failedFiles.push({ name: file.name, error: errorMsg });
                             errorCount++;
