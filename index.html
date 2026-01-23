@@ -708,6 +708,16 @@
                         const fileSizeMB = file.size / 1024 / 1024;
                         console.log(`📱 Processing Android file: ${file.name} (${fileSizeMB.toFixed(2)} MB)`);
 
+                        // PythonAnywhere has ~100MB upload limit
+                        if (fileSizeMB > 100) {
+                            const msg = `File too large (${fileSizeMB.toFixed(0)}MB). Maximum size: 100MB`;
+                            console.error(msg);
+                            if (!isBatch) showToast(`${file.name}: ${msg}`, 'error');
+                            failedFiles.push({ name: file.name, error: msg });
+                            errorCount++;
+                            continue;
+                        }
+
                         // Show upload progress for large files
                         if (fileSizeMB > 50 && !isBatch) {
                             showToast(`Uploading ${file.name} (${fileSizeMB.toFixed(0)}MB)...`, 'info');
