@@ -466,11 +466,12 @@
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📦</div>
             <p class="upload-text">Drop files here or click to browse</p>
-            <p class="upload-hint">EXE/DLL/SCR • ZIP/7Z/MSI • PNG/JPG/ICO/WEBP/ICNS • All formats supported</p>
-            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi,.png,.jpg,.jpeg,.ico,.webp,.icns" multiple>
+            <p class="upload-hint">EXE/DLL/SCR • ZIP/7Z/MSI • APK/XAPK • PNG/JPG/ICO/WEBP/ICNS • All formats supported</p>
+            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi,.apk,.xapk,.png,.jpg,.jpeg,.ico,.webp,.icns" multiple>
         </div>
         <p class="shortcuts-hint"><kbd>Ctrl+V</kbd> Paste image • <kbd>Ctrl+O</kbd> Open • <kbd>Ctrl+S</kbd> Download • <kbd>Esc</kbd> Clear</p>
-        
+        <p class="shortcuts-hint" style="margin-top: 8px; color: #808080;">⚠️ MSI files may not work on this server - extract .exe manually if needed</p>
+
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p class="loading-text" id="loadingText">Extracting icons...</p>
