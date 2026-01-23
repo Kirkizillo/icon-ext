@@ -708,11 +708,17 @@
                         const fileSizeMB = file.size / 1024 / 1024;
                         console.log(`📱 Processing Android file: ${file.name} (${fileSizeMB.toFixed(2)} MB)`);
 
+                        // Show upload progress for large files
+                        if (fileSizeMB > 50 && !isBatch) {
+                            showToast(`Uploading ${file.name} (${fileSizeMB.toFixed(0)}MB)...`, 'info');
+                        }
+
                         const formData = new FormData();
                         formData.append('file', file);  // Upload complete file
 
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 180000);
+                        // Longer timeout for large Android files (5 minutes)
+                        const timeoutId = setTimeout(() => controller.abort(), 300000);
 
                         try {
                             console.log(`Uploading ${file.name} to ${API_URL}/api/extract-icon...`);
@@ -752,8 +758,8 @@
                         } catch (error) {
                             clearTimeout(timeoutId);
                             console.error(`Fetch error for ${file.name}:`, error);
-                            const errorMsg = error.name === 'AbortError' ? 'Request timeout (3 min)' :
-                                            error.message === 'Failed to fetch' ? 'Network error or file too large' :
+                            const errorMsg = error.name === 'AbortError' ? 'Upload timeout (5 min). File too large or slow connection.' :
+                                            error.message === 'Failed to fetch' ? 'Network error during upload' :
                                             error.message;
                             console.error(`Error processing ${file.name}:`, errorMsg, error);
                             if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
