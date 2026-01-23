@@ -703,8 +703,58 @@
                         }
                     }
 
-                    // === 3-PHASE ARCHIVE HANDLING ===
-                    if (file.name.match(/\.(zip|7z|msi|apk|xapk)$/i)) {
+                    // === ANDROID APK/XAPK HANDLING (No slicing - need full file) ===
+                    if (file.name.match(/\.(apk|xapk)$/i)) {
+                        console.log(`📱 Processing Android file: ${file.name}`);
+                        const formData = new FormData();
+                        formData.append('file', file);  // Upload complete file
+
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 180000);
+
+                        let response;
+                        try {
+                            response = await fetch(`${API_URL}/api/extract-icon`, {
+                                method: 'POST',
+                                body: formData,
+                                signal: controller.signal
+                            });
+                            clearTimeout(timeoutId);
+                        } catch (error) {
+                            clearTimeout(timeoutId);
+                            if (error.name === 'AbortError') {
+                                console.error('Request timeout');
+                                results.push({ error: `Timeout processing ${file.name}` });
+                                continue;
+                            }
+                            console.error('Network error:', error);
+                            results.push({ error: `Network error: ${error.message}` });
+                            continue;
+                        }
+
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const originalSize = response.headers.get('X-Original-Size') || 'unknown';
+                            const outputSize = response.headers.get('X-Output-Size') || 'unknown';
+                            const quality = response.headers.get('X-Quality') || 'unknown';
+
+                            results.push({
+                                filename: file.name.replace(/\.(apk|xapk)$/i, '.png'),
+                                blob: blob,
+                                originalSize: originalSize,
+                                outputSize: outputSize,
+                                quality: quality
+                            });
+                        } else {
+                            const errorData = await response.json();
+                            console.error(`Error processing ${file.name}:`, errorData.error);
+                            results.push({ error: `${file.name}: ${errorData.error}` });
+                        }
+                        continue;
+                    }
+
+                    // === 3-PHASE ARCHIVE HANDLING (ZIP/7Z/MSI) ===
+                    if (file.name.match(/\.(zip|7z|msi)$/i)) {
                         const archiveSize = file.size;
                         // Increased slice sizes for better detection (7z: 25MB, MSI: 50MB)
                         let sliceSize = file.name.toLowerCase().endsWith('.msi') ? 50 * 1024 * 1024 :
