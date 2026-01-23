@@ -704,7 +704,7 @@
                     }
 
                     // === 3-PHASE ARCHIVE HANDLING ===
-                    if (file.name.match(/\.(zip|7z|msi)$/i)) {
+                    if (file.name.match(/\.(zip|7z|msi|apk|xapk)$/i)) {
                         const archiveSize = file.size;
                         // Increased slice sizes for better detection (7z: 25MB, MSI: 50MB)
                         let sliceSize = file.name.toLowerCase().endsWith('.msi') ? 50 * 1024 * 1024 :
