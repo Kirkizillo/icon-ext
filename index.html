@@ -1,1069 +1,1365 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Icon Extractor</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            color: #e0e0e0;
-        }
-        
-        .container {
-            background: rgba(30, 30, 46, 0.95);
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            max-width: 900px;
-            width: 100%;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        h1 {
-            color: #ffffff;
-            margin-bottom: 30px;
-            font-size: 32px;
-            font-weight: 300;
-            letter-spacing: 1px;
-            text-align: center;
-        }
-        
-        .upload-area {
-            border: 2px dashed rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 60px 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.03);
-        }
-        
-        .upload-area:hover {
-            border-color: rgba(255, 255, 255, 0.4);
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .upload-area.dragover {
-            border-color: #6366f1;
-            background: rgba(99, 102, 241, 0.1);
-            transform: scale(1.01);
-        }
-        
-        .upload-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-            opacity: 0.6;
-        }
-        
-        .upload-text {
-            font-size: 16px;
-            color: #b0b0b0;
-            margin-bottom: 8px;
-        }
-        
-        .upload-hint {
-            font-size: 13px;
-            color: #707070;
-        }
-        
-        input[type="file"] {
-            display: none;
-        }
-        
-        .btn {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            border: none;
-            padding: 12px 32px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-        }
-        
-        .preview-area {
-            margin-top: 40px;
-            display: none;
-        }
-        
-        .preview-area.active {
-            display: block;
-        }
-        
-        .preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-        
-        .preview-header h3 {
-            font-size: 18px;
-            font-weight: 400;
-            color: #ffffff;
-        }
-        
-        .clear-btn {
-            background: rgba(255, 255, 255, 0.1);
-            color: #e0e0e0;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 8px 20px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .clear-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        .preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-        
-        .preview-item {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-        
-        .preview-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-4px);
-        }
-        
-        .preview-item img {
-            width: 120px;
-            height: 120px;
-            border-radius: 8px;
-            object-fit: cover; /* This makes the image fill the box */
-            background: rgba(255, 255, 255, 0.05);
-            padding: 0; /* Remove frontend padding */
-            margin-bottom: 12px;
-        }
-        
-        .file-name {
-            font-size: 12px;
-            color: #b0b0b0;
-            word-break: break-all;
-            margin-bottom: 8px;
-        }
-        
-        .quality-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .quality-badge.low {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-        
-        .quality-badge.medium {
-            background: rgba(59, 130, 246, 0.2);
-            color: #3b82f6;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-        
-        .quality-badge.enhanced {
-            background: rgba(139, 92, 246, 0.2);
-            color: #8b5cf6;
-            border: 1px solid rgba(139, 92, 246, 0.3);
-        }
-        
-        .quality-badge.high {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-        
-        .download-btn {
-            width: 100%;
-            padding: 8px;
-            font-size: 12px;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            margin-top: 30px;
-        }
-        
-        .loading.active {
-            display: block;
-        }
-        
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top: 3px solid #6366f1;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .loading-text {
-            color: #b0b0b0;
-            font-size: 14px;
-        }
-
-        .progress-container {
-            width: 200px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-            margin: 16px auto 8px;
-            overflow: hidden;
-            display: none;
-        }
-
-        .progress-container.active {
-            display: block;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
-            border-radius: 2px;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-
-        .progress-detail {
-            color: #707070;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        .preview-item.failed {
-            border-color: rgba(239, 68, 68, 0.3);
-            background: rgba(239, 68, 68, 0.05);
-        }
-
-        .preview-item.failed:hover {
-            border-color: rgba(239, 68, 68, 0.5);
-            transform: none;
-            cursor: default;
-        }
-
-        .failed-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-            opacity: 0.6;
-        }
-
-        .error-text {
-            font-size: 10px;
-            color: #f87171;
-            margin-top: 4px;
-            word-break: break-word;
-            max-height: 40px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(30, 30, 46, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 16px 24px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-            max-width: 300px;
-        }
-        
-        .toast.show {
-            transform: translateX(0);
-        }
-        
-        .toast.success {
-            border-left: 4px solid #10b981;
-        }
-        
-        .toast.warning {
-            border-left: 4px solid #fbbf24;
-        }
-        
-        .toast.error {
-            border-left: 4px solid #ef4444;
-        }
-        
-        .actions {
-            text-align: center;
-            margin-top: 24px;
-        }
-        
-        .size-info {
-            font-size: 10px;
-            color: #707070;
-            margin-top: 4px;
-        }
-        
-        .shortcuts-hint {
-            text-align: center;
-            margin-top: 16px;
-            font-size: 11px;
-            color: #505050;
-        }
-
-        .shortcuts-hint kbd {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin: 0 2px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 12px;
-                align-items: flex-start;
-            }
-
-            .container {
-                padding: 20px;
-                border-radius: 12px;
-            }
-
-            h1 {
-                font-size: 22px;
-                margin-bottom: 20px;
-            }
-
-            .upload-area {
-                padding: 40px 20px;
-            }
-
-            .upload-icon {
-                font-size: 48px;
-            }
-
-            .upload-text {
-                font-size: 14px;
-            }
-
-            .upload-hint {
-                font-size: 11px;
-                line-height: 1.4;
-            }
-
-            .preview-grid {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                gap: 12px;
-            }
-
-            .preview-item {
-                padding: 16px 12px;
-            }
-
-            .preview-item img {
-                width: 80px;
-                height: 80px;
-            }
-
-            .quality-badge {
-                font-size: 9px;
-                padding: 3px 8px;
-            }
-
-            .file-name {
-                font-size: 11px;
-            }
-
-            .btn {
-                padding: 10px 24px;
-                font-size: 13px;
-            }
-
-            .toast {
-                left: 12px;
-                right: 12px;
-                max-width: none;
-                transform: translateY(-100px);
-            }
-
-            .toast.show {
-                transform: translateY(0);
-            }
-
-            .shortcuts-hint {
-                display: none;
-            }
-
-            .failed-icon {
-                font-size: 36px;
-            }
-
-            .progress-container {
-                width: 160px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .preview-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .preview-header {
-                flex-direction: column;
-                gap: 12px;
-                text-align: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Icon Extractor</h1>
-        
-        <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">📦</div>
-            <p class="upload-text">Drop files here or click to browse</p>
-            <p class="upload-hint">EXE/DLL/SCR • ZIP/7Z/MSI • PNG/JPG/ICO/WEBP/ICNS • All formats supported</p>
-            <input type="file" id="fileInput" accept=".exe,.dll,.scr,.cpl,.ocx,.zip,.7z,.msi,.png,.jpg,.jpeg,.ico,.webp,.icns" multiple>
-        </div>
-        <p class="shortcuts-hint"><kbd>Ctrl+V</kbd> Paste image • <kbd>Ctrl+O</kbd> Open • <kbd>Ctrl+S</kbd> Download • <kbd>Esc</kbd> Clear</p>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p class="loading-text" id="loadingText">Extracting icons...</p>
-            <div class="progress-container" id="progressContainer">
-                <div class="progress-bar" id="progressBar"></div>
-            </div>
-            <p class="progress-detail" id="progressDetail"></p>
-        </div>
-        
-        <div class="preview-area" id="previewArea">
-            <div class="preview-header">
-                <h3>Extracted Icons</h3>
-                <button class="clear-btn" id="clearBtn">Clear All</button>
-            </div>
-            <div class="preview-grid" id="previewGrid"></div>
-            <div class="actions">
-                <button class="btn" id="downloadAll">Download All as ZIP</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="toast" id="toast"></div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const previewArea = document.getElementById('previewArea');
-        const previewGrid = document.getElementById('previewGrid');
-        const loading = document.getElementById('loading');
-        const loadingText = document.getElementById('loadingText');
-        const progressContainer = document.getElementById('progressContainer');
-        const progressBar = document.getElementById('progressBar');
-        const progressDetail = document.getElementById('progressDetail');
-        const downloadAllBtn = document.getElementById('downloadAll');
-        const clearBtn = document.getElementById('clearBtn');
-        const toast = document.getElementById('toast');
-
-        let extractedIcons = [];
-        let failedFiles = []; // Track failed files with error details
-        const API_URL = 'https://kirkizillo.pythonanywhere.com';
-
-        function showToast(message, type = 'success') {
-            toast.textContent = message;
-            toast.className = `toast ${type} show`;
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        function updateProgress(current, total, filename) {
-            const percent = Math.round((current / total) * 100);
-            progressBar.style.width = `${percent}%`;
-            progressDetail.textContent = `${current} of ${total}: ${filename}`;
-            loadingText.textContent = total > 1 ? `Processing files...` : `Extracting icon...`;
-        }
-
-        function resetProgress() {
-            progressBar.style.width = '0%';
-            progressDetail.textContent = '';
-            progressContainer.classList.remove('active');
-            loadingText.textContent = 'Extracting icons...';
-        }
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            handleFiles(e.dataTransfer.files);
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-        });
-
-        clearBtn.addEventListener('click', () => {
-            extractedIcons = [];
-            failedFiles = [];
-            previewGrid.innerHTML = '';
-            previewArea.classList.remove('active');
-            showToast('Cleared all icons');
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // ESC - Clear all
-            if (e.key === 'Escape' && extractedIcons.length > 0) {
-                clearBtn.click();
-            }
-
-            // Ctrl+O or Cmd+O - Open file picker
-            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-                e.preventDefault();
-                fileInput.click();
-            }
-
-            // Ctrl+S or Cmd+S - Download all (when icons exist)
-            if ((e.ctrlKey || e.metaKey) && e.key === 's' && extractedIcons.length > 0) {
-                e.preventDefault();
-                downloadAllBtn.click();
-            }
-        });
-
-        // Ctrl+V - Paste image from clipboard
-        document.addEventListener('paste', async (e) => {
-            const items = e.clipboardData?.items;
-            if (!items) return;
-
-            const imageFiles = [];
-            for (const item of items) {
-                if (item.type.startsWith('image/')) {
-                    const file = item.getAsFile();
-                    if (file) {
-                        // Create a new file with a proper name
-                        const ext = file.type.split('/')[1] || 'png';
-                        const newFile = new File([file], `pasted_image.${ext}`, { type: file.type });
-                        imageFiles.push(newFile);
-                    }
-                }
-            }
-
-            if (imageFiles.length > 0) {
-                showToast('Processing pasted image...', 'success');
-                handleFiles(imageFiles);
-            }
-        });
-
-        async function handleFiles(files) {
-            const isBatch = files.length > 1;
-            failedFiles = []; // Reset failed files
-
-            // Show progress bar for batch uploads
-            if (isBatch) {
-                progressContainer.classList.add('active');
-            }
-
-            loading.classList.add('active');
-
-            let successCount = 0;
-            let errorCount = 0;
-            let fileIndex = 0;
-            const totalFiles = files.length;
-
-            for (let file of files) {
-                fileIndex++;
-                updateProgress(fileIndex, totalFiles, file.name);
-
-                try {
-                    if (file.size > 500 * 1024 * 1024) {
-                        if (!isBatch) showToast(`${file.name} exceeds 500MB limit`, 'error');
-                        failedFiles.push({ name: file.name, error: 'File exceeds 500MB limit' });
-                        errorCount++;
-                        continue;
-                    }
-
-                    // Warn about very large EXE files on hosted version (PythonAnywhere limit ~150MB)
-                    // Files under 150MB will attempt upload; show warning but don't block
-                    if (file.name.match(/\.(exe|dll|scr)$/i) && file.size > 150 * 1024 * 1024 && API_URL.includes('pythonanywhere')) {
-                        if (!isBatch) showToast(`${file.name} is very large (${Math.round(file.size/1024/1024)}MB). The hosted version may not support files this large.`, 'error');
-                        failedFiles.push({ name: file.name, error: 'File too large for hosted version (max ~150MB)' });
-                        errorCount++;
-                        continue;
-                    }
-
-                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi|png|jpg|jpeg|ico|webp|icns)$/i)) {
-                        if (!isBatch) showToast(`${file.name} is not a valid file type`, 'error');
-                        failedFiles.push({ name: file.name, error: 'Unsupported file type' });
-                        errorCount++;
-                        continue;
-                    }
-
-                    let fileToUpload = file;
-
-                    // === IMAGE HANDLING (PNG/JPG/ICO/WEBP/ICNS) ===
-                    if (file.name.match(/\.(png|jpg|jpeg|ico|webp|icns)$/i)) {
-                        const formData = new FormData();
-                        formData.append('file', file);
-
-                        try {
-                            const response = await fetch(`${API_URL}/api/process-image`, {
-                                method: 'POST',
-                                body: formData
-                            });
-
-                            if (!response.ok) {
-                                const error = await response.json();
-                                const errorMsg = error.error || 'Failed to process image';
-                                if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
-                                failedFiles.push({ name: file.name, error: errorMsg });
-                                errorCount++;
-                                continue;
-                            }
-
-                            const imgOriginalSize = response.headers.get('X-Original-Size');
-                            const imgQuality = response.headers.get('X-Quality');
-                            const imgOutputSize = response.headers.get('X-Output-Size');
-
-                            const iconBlob = await response.blob();
-                            const baseName = file.name.replace(/\.[^/.]+$/, '');
-                            const actualFilename = imgOutputSize ? `${baseName}_${imgOutputSize}.png` : `${baseName}_150x150.png`;
-
-                            addIconToPreview(iconBlob, file.name, {
-                                wasUpscaled: true,
-                                originalSize: imgOriginalSize,
-                                quality: imgQuality,
-                                outputSize: imgOutputSize
-                            }, actualFilename);
-
-                            successCount++;
-                            if (!isBatch) showToast(`${file.name}: Processed (${imgOriginalSize})`, 'success');
-
-                            continue; // Skip to next file
-
-                        } catch (e) {
-                            if (!isBatch) showToast(`${file.name}: ${e.message}`, 'error');
-                            failedFiles.push({ name: file.name, error: e.message });
-                            errorCount++;
-                            continue;
-                        }
-                    }
-
-                    // === 3-PHASE ARCHIVE HANDLING ===
-                    if (file.name.match(/\.(zip|7z|msi)$/i)) {
-                        const archiveSize = file.size;
-                        // Increased slice sizes for better detection (7z: 25MB, MSI: 30MB)
-                        let sliceSize = file.name.toLowerCase().endsWith('.msi') ? 30 * 1024 * 1024 :
-                                       file.name.toLowerCase().endsWith('.7z') ? 25 * 1024 * 1024 :
-                                       10 * 1024 * 1024;
-                        let phase1Success = false;
-
-                        // PHASE 1: Smart slicing
-                        console.log(`📦 Phase 1: Slicing ${file.name}`);
-                        if (archiveSize > sliceSize) {
-                            fileToUpload = new File([file.slice(0, sliceSize)], file.name, { type: file.type || 'application/zip' });
-                        }
-                        
-                        const formData = new FormData();
-                        formData.append('file', fileToUpload);
-                        
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 180000);
-                        
-                        let response;
-                        try {
-                            response = await fetch(`${API_URL}/api/extract-icon`, {
-                                method: 'POST',
-                                body: formData,
-                                signal: controller.signal
-                            });
-                            clearTimeout(timeoutId);
-                        } catch (fetchError) {
-                            clearTimeout(timeoutId);
-                            if (!isBatch) showToast(`${file.name}: ${fetchError.message}`, 'error');
-                            failedFiles.push({ name: file.name, error: fetchError.message });
-                            errorCount++;
-                            continue;
-                        }
-
-                        // Check Phase 1 result
-                        if (response.ok) {
-                            phase1Success = true;
-                        } else {
-                            const errorData = await response.json();
-
-                            // PHASE 2: Try full upload if Phase 1 failed with recoverable error
-                            // Expanded conditions: also catch 7Z/MSI specific errors
-                            const recoverableErrors = [
-                                'EXE_NOT_FOUND',
-                                'INCOMPLETE_ZIP',
-                                'invalid header data',  // 7Z truncated
-                                'incomplete OLE sector', // MSI truncated
-                                'Bad7zFile',
-                                'corrupted'
-                            ];
-                            const isRecoverable = recoverableErrors.some(err =>
-                                errorData.error && errorData.error.includes(err)
-                            );
-
-                            // Increased limit to 150MB for full upload (archives can be large)
-                            if (isRecoverable && archiveSize <= 150 * 1024 * 1024) {
-                                console.log(`⚠️ Phase 1 failed (${errorData.error}), trying Phase 2: Full upload`);
-
-                                const fullFormData = new FormData();
-                                fullFormData.append('file', file);
-
-                                try {
-                                    response = await fetch(`${API_URL}/api/extract-icon`, {
-                                        method: 'POST',
-                                        body: fullFormData
-                                    });
-
-                                    if (response.ok) {
-                                        console.log(`✅ Phase 2 succeeded`);
-                                    } else {
-                                        const finalError = await response.json();
-                                        const errorMsg = finalError.error || 'Failed to extract icon';
-                                        if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
-                                        failedFiles.push({ name: file.name, error: errorMsg });
-                                        errorCount++;
-                                        continue;
-                                    }
-                                } catch (e) {
-                                    if (!isBatch) showToast(`${file.name}: ${e.message}`, 'error');
-                                    failedFiles.push({ name: file.name, error: e.message });
-                                    errorCount++;
-                                    continue;
-                                }
-                            } else if (archiveSize > 150 * 1024 * 1024) {
-                                const errorMsg = `File too large (${Math.round(archiveSize/1024/1024)}MB). Extract the .exe manually.`;
-                                if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
-                                failedFiles.push({ name: file.name, error: errorMsg });
-                                errorCount++;
-                                continue;
-                            } else {
-                                const errorMsg = errorData.error || 'Failed to extract icon';
-                                if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
-                                failedFiles.push({ name: file.name, error: errorMsg });
-                                errorCount++;
-                                continue;
-                            }
-                        }
-                        
-                        // SUCCESS - process icon (same for both phases)
-                        if (response.ok) {
-                            const metaWasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
-                            const metaOriginalSize = response.headers.get('X-Original-Size');
-                            const metaQuality = response.headers.get('X-Quality');
-                            const metaOutputSize = response.headers.get('X-Output-Size');
-                            
-                            const iconBlob = await response.blob();
-                            const baseName = file.name.replace(/\.[^/.]+$/, '');
-                            const actualFilename = metaOutputSize ? `${baseName}_${metaOutputSize.replace('x', 'x')}.png` : `${baseName}_icon.png`;
-                            
-                            addIconToPreview(iconBlob, file.name, {
-                                wasUpscaled: metaWasUpscaled,
-                                originalSize: metaOriginalSize,
-                                quality: metaQuality,
-                                outputSize: metaOutputSize
-                            }, actualFilename);
-                            
-                            successCount++;
-
-                            if (!isBatch) {
-                                if (metaQuality === 'low') {
-                                    showToast(`${file.name}: Low quality - AI enhanced`, 'warning');
-                                } else if (metaQuality === 'medium' || metaQuality === 'enhanced') {
-                                    showToast(`${file.name}: Enhanced (${metaOriginalSize})`, 'success');
-                                } else {
-                                    showToast(`${file.name}: High quality (${metaOriginalSize})`, 'success');
-                                }
-                            }
-                        }
-
-                    } else {
-                        // REGULAR EXE HANDLING
-                        // Phase 1: Try with 50MB slice (fast for most files)
-                        let exeFileToUpload = fileToUpload;
-                        if (file.size > 50 * 1024 * 1024) {
-                            exeFileToUpload = new File([file.slice(0, 50 * 1024 * 1024)], file.name, { type: file.type || 'application/x-msdownload' });
-                        }
-
-                        const formData = new FormData();
-                        formData.append('file', exeFileToUpload);
-
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 180000);
-
-                        let response;
-                        try {
-                            response = await fetch(`${API_URL}/api/extract-icon`, {
-                                method: 'POST',
-                                body: formData,
-                                signal: controller.signal
-                            });
-                            clearTimeout(timeoutId);
-                        } catch (fetchError) {
-                            clearTimeout(timeoutId);
-                            if (!isBatch) showToast(`${file.name}: ${fetchError.message}`, 'error');
-                            failedFiles.push({ name: file.name, error: fetchError.message });
-                            errorCount++;
-                            continue;
-                        }
-
-                        // Phase 2: If server says we need full upload, retry with full file
-                        if (!response.ok && file.size > 50 * 1024 * 1024) {
-                            const errorData = await response.json().catch(() => ({}));
-                            if (errorData.needsFullUpload) {
-                                if (!isBatch) showToast(`${file.name}: Large file, uploading full file...`, 'info');
-
-                                const fullFormData = new FormData();
-                                fullFormData.append('file', file);
-
-                                const fullController = new AbortController();
-                                const fullTimeoutId = setTimeout(() => fullController.abort(), 600000); // 10 min for large files
-
-                                try {
-                                    response = await fetch(`${API_URL}/api/extract-icon?fullUpload=true`, {
-                                        method: 'POST',
-                                        body: fullFormData,
-                                        signal: fullController.signal
-                                    });
-                                    clearTimeout(fullTimeoutId);
-                                } catch (fetchError) {
-                                    clearTimeout(fullTimeoutId);
-                                    const errorMsg = API_URL.includes('pythonanywhere')
-                                        ? `Icon data is stored deep in file. Full upload (${Math.round(file.size/1024/1024)}MB) exceeds hosted server limits.`
-                                        : fetchError.message;
-                                    if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
-                                    failedFiles.push({ name: file.name, error: errorMsg });
-                                    errorCount++;
-                                    continue;
-                                }
-                            }
-                        }
-
-                        if (!response.ok) {
-                            const error = await response.json();
-                            const errorMsg = error.error || 'Failed to extract icon';
-                            if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
-                            failedFiles.push({ name: file.name, error: errorMsg });
-                            errorCount++;
-                            continue;
-                        }
-
-                        // Process EXE icon
-                        const exeWasUpscaled = response.headers.get('X-Was-Upscaled') === 'true';
-                        const exeOriginalSize = response.headers.get('X-Original-Size');
-                        const exeQuality = response.headers.get('X-Quality');
-                        const exeOutputSize = response.headers.get('X-Output-Size');
-
-                        const iconBlob = await response.blob();
-                        const baseName = file.name.replace(/\.[^/.]+$/, '');
-                        const actualFilename = exeOutputSize ? `${baseName}_${exeOutputSize.replace('x', 'x')}.png` : `${baseName}_icon.png`;
-
-                        addIconToPreview(iconBlob, file.name, {
-                            wasUpscaled: exeWasUpscaled,
-                            originalSize: exeOriginalSize,
-                            quality: exeQuality,
-                            outputSize: exeOutputSize
-                        }, actualFilename);
-
-                        successCount++;
-
-                        if (!isBatch) {
-                            if (exeQuality === 'low') {
-                                showToast(`${file.name}: Low quality - AI enhanced`, 'warning');
-                            } else if (exeQuality === 'medium' || exeQuality === 'enhanced') {
-                                showToast(`${file.name}: Enhanced (${exeOriginalSize})`, 'success');
-                            } else {
-                                showToast(`${file.name}: High quality (${exeOriginalSize})`, 'success');
-                            }
-                        }
-                    }
-
-                } catch (error) {
-                    // Catch any unexpected errors for this file
-                    console.error(`Error processing ${file.name}:`, error);
-                    if (!isBatch) showToast(`${file.name}: ${error.message}`, 'error');
-                    failedFiles.push({ name: file.name, error: error.message });
-                    errorCount++;
-                    // Continue to next file instead of stopping
-                }
-            }
-
-            loading.classList.remove('active');
-            resetProgress();
-
-            // Show summary for batch uploads
-            if (files.length > 1) {
-                if (successCount > 0 && errorCount > 0) {
-                    showToast(`Processed: ${successCount} succeeded, ${errorCount} failed`, 'warning');
-                } else if (successCount > 0) {
-                    showToast(`Successfully extracted ${successCount} icon${successCount > 1 ? 's' : ''}`, 'success');
-                } else if (errorCount > 0) {
-                    showToast(`Failed to extract ${errorCount} icon${errorCount > 1 ? 's' : ''}`, 'error');
-                }
-
-                // Show failed files details in console and optionally in UI
-                if (failedFiles.length > 0) {
-                    console.log('Failed files:', failedFiles);
-                    // Add failed items to the preview grid
-                    failedFiles.forEach(f => addFailedItemToPreview(f.name, f.error));
-                }
-            }
-
-            if (extractedIcons.length > 0 || failedFiles.length > 0) {
-                previewArea.classList.add('active');
-            }
-        }
-
-        function addFailedItemToPreview(filename, error) {
-            const baseName = filename.replace(/\.[^/.]+$/, '');
-
-            const item = document.createElement('div');
-            item.className = 'preview-item failed';
-            item.innerHTML = `
-                <div class="failed-icon">⚠️</div>
-                <div class="quality-badge low" title="${error}">FAILED</div>
-                <div class="file-name">${baseName}</div>
-                <div class="error-text">${error}</div>
-            `;
-
-            previewGrid.appendChild(item);
-        }
-
-                function addIconToPreview(blob, originalName, metadata, actualFilename) {
-                    const url = URL.createObjectURL(blob);
-                    const baseName = originalName.replace(/\.[^/.]+$/, '');
-                    
-                    extractedIcons.push({
-                        blob: blob,
-                        name: actualFilename || `${baseName}_icon.png`,
-                        metadata: metadata
-                    });
-                    
-                    const badges = {
-                        'high': 'HIGH QUALITY',
-                        'medium': 'MEDIUM',
-                        'enhanced': 'ENHANCED',
-                        'low': 'LOW QUALITY'
-                    };
-
-                    const badgeTitles = {
-                        'high': `Original ${metadata.originalSize} - Native quality`,
-                        'medium': `Original ${metadata.originalSize} - Medium resolution`,
-                        'enhanced': `Original ${metadata.originalSize} - AI upscaled`,
-                        'low': `Original ${metadata.originalSize} - Small source, upscaled`
-                    };
-
-                    // Default to 'medium' if quality is unknown or missing
-                    const quality = metadata.quality || 'medium';
-                    let badgeLabel = badges[quality] || badges['medium'];
-                    let badgeTitle = badgeTitles[quality] || `Original ${metadata.originalSize}`;
-                    
-                    const item = document.createElement('div');
-                    item.className = 'preview-item';
-                    item.innerHTML = `
-                        <img src="${url}" alt="Icon">
-                        <div class="quality-badge ${quality}" title="${badgeTitle}">${badgeLabel}</div>
-                        <div class="file-name">${baseName}</div>
-                        <div class="size-info">${metadata.originalSize} → ${metadata.outputSize || '150x150'}</div>
-                        <button class="btn download-btn">Download</button>
-                    `;
-                    
-                    item.querySelector('button').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        downloadBlob(blob, actualFilename);
-                    });
-                    
-                    item.addEventListener('click', () => {
-                        downloadBlob(blob, actualFilename);
-                    });      
-                    previewGrid.appendChild(item);
-                }
-
-        function downloadBlob(blob, fileName) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast(`Downloaded ${fileName}`);
-        }
-
-        downloadAllBtn.addEventListener('click', async () => {
-            if (extractedIcons.length === 0) return;
-            
-            if (extractedIcons.length === 1) {
-                downloadBlob(extractedIcons[0].blob, extractedIcons[0].name);
-                return;
-            }
-            
-            const zip = new JSZip();
-            extractedIcons.forEach(icon => {
-                zip.file(icon.name, icon.blob);
-            });
-            
-            const content = await zip.generateAsync({ type: 'blob' });
-            downloadBlob(content, 'icons_150x150.zip');
-        });
-    </script>
-</body>
-</html>
+"""
+Icon Extraction Core Module
+Shared functionality for extracting icons from Windows executables and archives
+Can be used both as a library and via CLI tool
+"""
+
+from icoextract import IconExtractor
+from PIL import Image, ImageFile, ImageFilter
+import io
+import sys
+import time
+import struct
+from collections import defaultdict
+import zipfile
+import tempfile
+import os
+import shutil
+
+# CAB archive support (for MSI extraction)
+try:
+    import cabarchive
+    HAS_CABARCHIVE = True
+except ImportError:
+    HAS_CABARCHIVE = False
+
+# Archive extraction - py7zr
+try:
+    import py7zr
+    HAS_7Z = True
+except ImportError:
+    HAS_7Z = False
+
+# OLE file support (for MSI parsing)
+try:
+    import olefile
+    HAS_OLEFILE = True
+except ImportError:
+    HAS_OLEFILE = False
+
+# MSI support requires both olefile and cabarchive
+HAS_PYMSI = HAS_OLEFILE and HAS_CABARCHIVE
+
+# ScaleNx for pixel-art upscaling
+try:
+    from scalenx import scalenx
+    HAS_SCALENX = True
+except ImportError:
+    HAS_SCALENX = False
+
+# libarchive for advanced archive extraction (LZX CAB, BCJ2 7z)
+HAS_LIBARCHIVE = False
+try:
+    import libarchive
+    # Test that it actually works
+    test_data = b'PK\x03\x04' + b'\x00' * 100
+    with libarchive.memory_reader(test_data) as archive:
+        for entry in archive:
+            pass
+    HAS_LIBARCHIVE = True
+except Exception:
+    HAS_LIBARCHIVE = False
+
+# Timeout handler for large MSI files (Unix only)
+import signal
+HAS_SIGALRM = hasattr(signal, 'SIGALRM')
+
+# Allow loading truncated images
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+# File signature (magic bytes) validation
+FILE_SIGNATURES = {
+    # Executables
+    'exe': [(b'MZ', 0)],
+    'dll': [(b'MZ', 0)],
+    'scr': [(b'MZ', 0)],
+    'cpl': [(b'MZ', 0)],
+    'ocx': [(b'MZ', 0)],
+    # Archives
+    'zip': [(b'PK\x03\x04', 0), (b'PK\x05\x06', 0), (b'PK\x07\x08', 0)],
+    '7z': [(b'7z\xbc\xaf\x27\x1c', 0)],
+    'msi': [(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1', 0)],
+    # Images
+    'png': [(b'\x89PNG\r\n\x1a\n', 0)],
+    'jpg': [(b'\xff\xd8\xff', 0)],
+    'jpeg': [(b'\xff\xd8\xff', 0)],
+    'ico': [(b'\x00\x00\x01\x00', 0)],
+    'webp': [(b'RIFF', 0)],
+    'icns': [(b'icns', 0)],
+}
+
+
+def get_feature_availability():
+    """Return dict of available features"""
+    return {
+        'scalenx': HAS_SCALENX,
+        '7z': HAS_7Z,
+        'msi': HAS_PYMSI,
+        'libarchive': HAS_LIBARCHIVE,
+        'cabarchive': HAS_CABARCHIVE,
+        'olefile': HAS_OLEFILE,
+    }
+
+
+def validate_file_signature(file_data, extension):
+    """Validate file content matches its extension using magic bytes.
+    Returns: (is_valid: bool, detected_type: str or None)
+    """
+    ext = extension.lower().lstrip('.')
+
+    # Special case for WEBP
+    if ext == 'webp':
+        if len(file_data) >= 12:
+            if file_data[:4] == b'RIFF' and file_data[8:12] == b'WEBP':
+                return True, 'webp'
+        return False, None
+
+    # Check against known signatures
+    if ext in FILE_SIGNATURES:
+        for signature, offset in FILE_SIGNATURES[ext]:
+            if len(file_data) >= offset + len(signature):
+                if file_data[offset:offset + len(signature)] == signature:
+                    return True, ext
+        return False, None
+
+    # Unknown extension - allow by default
+    return True, None
+
+
+def detect_file_type(file_data):
+    """Detect file type from magic bytes. Returns extension or None."""
+    if len(file_data) < 8:
+        return None
+
+    # Check executables first (MZ header)
+    if file_data[:2] == b'MZ':
+        return 'exe'
+
+    # Check archives
+    if file_data[:4] == b'PK\x03\x04':
+        return 'zip'
+    if file_data[:6] == b'7z\xbc\xaf\x27\x1c':
+        return '7z'
+    if file_data[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+        return 'msi'
+
+    # Check images
+    if file_data[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'png'
+    if file_data[:3] == b'\xff\xd8\xff':
+        return 'jpg'
+    if file_data[:4] == b'\x00\x00\x01\x00':
+        return 'ico'
+    if file_data[:4] == b'RIFF' and len(file_data) >= 12 and file_data[8:12] == b'WEBP':
+        return 'webp'
+    if file_data[:4] == b'icns':
+        return 'icns'
+
+    return None
+
+
+def safe_temp_cleanup(path):
+    """Safely cleanup temporary files/directories"""
+    try:
+        if os.path.exists(path):
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+    except Exception as e:
+        sys.stderr.write(f"Warning: Failed to cleanup {path}: {e}\n")
+
+
+def _score_executable_name(filename):
+    """Score executable names to prioritize likely main apps.
+    Higher score = more likely to be the main executable with icons.
+    """
+    name_lower = os.path.basename(filename).lower()
+    score = 0
+
+    # Prefer .exe over .dll/.scr
+    if name_lower.endswith('.exe'):
+        score += 100
+    elif name_lower.endswith('.scr'):
+        score += 50
+
+    # Penalize common non-main executables
+    skip_patterns = ['unins', 'uninst', 'remove', 'helper', 'crash', 'update',
+                     'updater', 'service', 'daemon', 'cli', 'cmd', 'console']
+    for pattern in skip_patterns:
+        if pattern in name_lower:
+            score -= 50
+
+    # Boost likely main executables
+    main_patterns = ['setup', 'install', 'main', 'app', 'launcher', 'start']
+    for pattern in main_patterns:
+        if pattern in name_lower:
+            score += 30
+
+    # Prefer shorter names
+    score -= len(name_lower) // 10
+
+    return score
+
+
+def extract_cab_with_expand(cab_data, temp_dir):
+    """Extract CAB using Windows expand.exe (supports LZX compression).
+    Returns list of (filename, file_data, file_size) tuples.
+    """
+    import subprocess
+
+    extracted_files = []
+    cab_path = None
+    extract_dir = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".cab") as cab_file:
+            cab_file.write(cab_data)
+            cab_path = cab_file.name
+
+        extract_dir = tempfile.mkdtemp(dir=temp_dir)
+
+        result = subprocess.run(
+            ['expand.exe', cab_path, '-F:*', extract_dir],
+            capture_output=True,
+            timeout=60
+        )
+
+        if result.returncode != 0:
+            sys.stderr.write(f"    expand.exe failed: {result.stderr.decode('utf-8', errors='replace')}\n")
+            return []
+
+        for root, dirs, files in os.walk(extract_dir):
+            for fname in files:
+                fpath = os.path.join(root, fname)
+                try:
+                    with open(fpath, 'rb') as f:
+                        fdata = f.read()
+                    rel_path = os.path.relpath(fpath, extract_dir)
+                    extracted_files.append((rel_path, fdata, len(fdata)))
+                except Exception as e:
+                    sys.stderr.write(f"    Failed to read {fname}: {e}\n")
+
+        sys.stderr.write(f"    expand.exe extracted {len(extracted_files)} file(s)\n")
+        return extracted_files
+
+    except subprocess.TimeoutExpired:
+        sys.stderr.write("    expand.exe timed out\n")
+        return []
+    except FileNotFoundError:
+        sys.stderr.write("    expand.exe not found (not Windows?)\n")
+        return []
+    except Exception as e:
+        sys.stderr.write(f"    expand.exe error: {e}\n")
+        return []
+    finally:
+        safe_temp_cleanup(cab_path)
+
+
+def extract_cab_with_cabextract(cab_data, temp_dir):
+    """Extract CAB using cabextract (Linux tool, supports LZX compression).
+    Returns list of (filename, file_data, file_size) tuples.
+    """
+    import subprocess
+
+    cabextract_path = shutil.which('cabextract')
+    if not cabextract_path:
+        sys.stderr.write("    cabextract not found\n")
+        return []
+
+    extracted_files = []
+    cab_path = None
+    extract_dir = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".cab") as cab_file:
+            cab_file.write(cab_data)
+            cab_path = cab_file.name
+
+        extract_dir = tempfile.mkdtemp(dir=temp_dir)
+
+        result = subprocess.run(
+            [cabextract_path, '-d', extract_dir, cab_path],
+            capture_output=True,
+            timeout=60
+        )
+
+        if result.returncode != 0:
+            sys.stderr.write(f"    cabextract failed: {result.stderr.decode('utf-8', errors='replace')}\n")
+            return []
+
+        for root, dirs, files in os.walk(extract_dir):
+            for fname in files:
+                fpath = os.path.join(root, fname)
+                try:
+                    with open(fpath, 'rb') as f:
+                        fdata = f.read()
+                    rel_path = os.path.relpath(fpath, extract_dir)
+                    extracted_files.append((rel_path, fdata, len(fdata)))
+                except Exception as e:
+                    sys.stderr.write(f"    Failed to read {fname}: {e}\n")
+
+        sys.stderr.write(f"    cabextract extracted {len(extracted_files)} file(s)\n")
+        return extracted_files
+
+    except subprocess.TimeoutExpired:
+        sys.stderr.write("    cabextract timed out\n")
+        return []
+    except Exception as e:
+        sys.stderr.write(f"    cabextract error: {e}\n")
+        return []
+    finally:
+        safe_temp_cleanup(cab_path)
+
+
+def extract_cab_with_libarchive(cab_data, temp_dir):
+    """Extract CAB using libarchive (cross-platform, supports LZX).
+    Returns list of (filename, file_data, file_size) tuples.
+    """
+    if not HAS_LIBARCHIVE:
+        sys.stderr.write("    libarchive not available\n")
+        return []
+
+    extracted_files = []
+
+    try:
+        import libarchive
+
+        with libarchive.memory_reader(cab_data) as archive:
+            for entry in archive:
+                if entry.isfile:
+                    fname = entry.name
+                    data = b''.join(archive.read_data(block_size=10240))
+                    extracted_files.append((fname, data, len(data)))
+
+        sys.stderr.write(f"    libarchive extracted {len(extracted_files)} file(s)\n")
+        return extracted_files
+
+    except Exception as e:
+        sys.stderr.write(f"    libarchive CAB error: {e}\n")
+        return []
+
+
+def extract_cab_cross_platform(cab_data, temp_dir):
+    """Cross-platform CAB extraction - tries multiple methods.
+    Returns list of (filename, file_data, file_size) tuples.
+    """
+    methods_tried = []
+
+    # Method 1: libarchive (best for LZX compression)
+    if HAS_LIBARCHIVE:
+        sys.stderr.write("    Trying libarchive for CAB extraction...\n")
+        result = extract_cab_with_libarchive(cab_data, temp_dir)
+        if result:
+            sys.stderr.write(f"    libarchive successfully extracted {len(result)} file(s)\n")
+            return result
+        methods_tried.append("libarchive (available but failed)")
+    else:
+        methods_tried.append("libarchive (not installed)")
+
+    # Method 2: Platform-specific tools
+    if sys.platform == 'win32':
+        sys.stderr.write("    Trying expand.exe (Windows native)...\n")
+        result = extract_cab_with_expand(cab_data, temp_dir)
+        if result:
+            sys.stderr.write(f"    expand.exe successfully extracted {len(result)} file(s)\n")
+            return result
+        methods_tried.append("expand.exe (available but failed)")
+    else:
+        sys.stderr.write("    Trying cabextract (Linux/macOS)...\n")
+        result = extract_cab_with_cabextract(cab_data, temp_dir)
+        if result:
+            sys.stderr.write(f"    cabextract successfully extracted {len(result)} file(s)\n")
+            return result
+        methods_tried.append("cabextract (not found or failed)")
+
+        sys.stderr.write("    Trying expand.exe via Wine...\n")
+        result = extract_cab_with_expand(cab_data, temp_dir)
+        if result:
+            sys.stderr.write(f"    expand.exe (Wine) successfully extracted {len(result)} file(s)\n")
+            return result
+        methods_tried.append("expand.exe via Wine (failed)")
+
+    # All methods failed - provide user-friendly error message
+    sys.stderr.write("    CAB extraction failed - all methods exhausted\n")
+    sys.stderr.write(f"    Tried: {', '.join(methods_tried)}\n")
+
+    # Raise a user-friendly error instead of just logging
+    raise Exception("MSI extraction not fully supported on this server. Please extract the .exe file from the MSI manually and upload it directly.")
+
+
+def extract_7z_with_libarchive(archive_path, temp_dir):
+    """Extract 7z using libarchive (supports BCJ2 if libarchive was built with it).
+    Returns list of (filename, file_data, file_size) tuples for executables.
+    """
+    if not HAS_LIBARCHIVE:
+        sys.stderr.write("    libarchive not available\n")
+        return []
+
+    extracted_files = []
+
+    try:
+        import libarchive
+
+        with libarchive.file_reader(archive_path) as archive:
+            for entry in archive:
+                if entry.isfile:
+                    fname = entry.name
+                    if fname.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx')):
+                        data = b''.join(archive.read_data(block_size=10240))
+                        extracted_files.append((fname, data, len(data)))
+                        sys.stderr.write(f"    Extracted: {fname} ({len(data):,} bytes)\n")
+
+        sys.stderr.write(f"    libarchive extracted {len(extracted_files)} executable(s)\n")
+        return extracted_files
+
+    except Exception as e:
+        sys.stderr.write(f"    libarchive 7z error: {e}\n")
+        return []
+
+
+def extract_7z_with_cli(archive_path, temp_dir):
+    """Extract 7z using CLI tools with SELECTIVE extraction (disk space optimized).
+
+    Strategy:
+    1. List files in archive (no extraction, very fast)
+    2. Score and rank executables using _score_executable_name()
+    3. Extract ONLY the best EXE (not all files!)
+
+    This dramatically reduces disk usage:
+    - Unicodi.7z: 40MB archive, 198 files, ~35MB extracted
+      OLD: Extracts all 198 files
+      NEW: Extracts only Unicodia.exe (7.5MB) - 78% disk space savings!
+
+    Supports all compression methods including BCJ2.
+    Tools tried: 7z, 7za, 7zr, 7zz, p7zip.
+    Returns list of (filename, file_data, file_size) tuples.
+    """
+    import subprocess
+
+    # Extended list of 7z tool paths (including 7zz - new portable version)
+    seven_zip_paths = [
+        # Windows - Program Files
+        r'C:\Program Files\7-Zip\7z.exe',
+        r'C:\Program Files\7-Zip\7zz.exe',
+        r'C:\Program Files (x86)\7-Zip\7z.exe',
+        r'C:\Program Files (x86)\7-Zip\7zz.exe',
+        # Windows - Scoop
+        r'%USERPROFILE%\scoop\apps\7zip\current\7z.exe',
+        r'%USERPROFILE%\scoop\apps\7zip\current\7zz.exe',
+        # Windows - Chocolatey
+        r'C:\ProgramData\chocolatey\lib\7zip\tools\7z.exe',
+        # Linux - standard paths
+        '/usr/bin/7z',
+        '/usr/bin/7za',
+        '/usr/bin/7zr',
+        '/usr/bin/7zz',
+        '/usr/local/bin/7z',
+        '/usr/local/bin/7za',
+        '/usr/local/bin/7zr',
+        '/usr/local/bin/7zz',
+        # macOS - Homebrew
+        '/opt/homebrew/bin/7z',
+        '/opt/homebrew/bin/7zz',
+        '/usr/local/opt/p7zip/bin/7z',
+        # PATH search (will use shutil.which)
+        '7z',
+        '7za',
+        '7zr',
+        '7zz',
+    ]
+
+    # Expand environment variables
+    seven_zip_paths = [os.path.expandvars(p) for p in seven_zip_paths]
+
+    seven_zip_exe = None
+    tried_paths = []
+    for path in seven_zip_paths:
+        try:
+            # Try direct path first
+            result = subprocess.run([path, '--help'], capture_output=True, timeout=5, shell=False)
+            if result.returncode == 0:
+                seven_zip_exe = path
+                tool_name = os.path.basename(path)
+                sys.stderr.write(f"    Using 7z tool: {tool_name} ({path})\n")
+                break
+        except FileNotFoundError:
+            tried_paths.append(path)
+        except Exception:
+            tried_paths.append(path)
+
+    extracted_files = []
+
+    # SELECTIVE EXTRACTION: List first, extract only best EXE (saves disk space!)
+    if seven_zip_exe:
+        try:
+            # Step 1: List files in archive (very fast, no extraction)
+            sys.stderr.write("    Listing archive contents (selective extraction mode)...\n")
+            list_result = subprocess.run(
+                [seven_zip_exe, 'l', '-slt', archive_path],
+                capture_output=True,
+                timeout=30
+            )
+
+            if list_result.returncode != 0:
+                sys.stderr.write(f"    Failed to list archive contents\n")
+            else:
+                # Parse list output to find executables
+                list_output = list_result.stdout.decode('utf-8', errors='replace')
+                exe_candidates = []
+
+                current_file = {}
+                for line in list_output.split('\n'):
+                    line = line.strip()
+                    if line.startswith('Path = '):
+                        if current_file.get('Path'):
+                            # Save previous file
+                            path = current_file.get('Path', '')
+                            if path.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx')):
+                                size = current_file.get('Size', 0)
+                                exe_candidates.append((path, size))
+                        current_file = {'Path': line[7:]}
+                    elif line.startswith('Size = '):
+                        try:
+                            current_file['Size'] = int(line[7:])
+                        except:
+                            current_file['Size'] = 0
+
+                # Save last file
+                if current_file.get('Path'):
+                    path = current_file.get('Path', '')
+                    if path.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx')):
+                        size = current_file.get('Size', 0)
+                        exe_candidates.append((path, size))
+
+                if exe_candidates:
+                    sys.stderr.write(f"    Found {len(exe_candidates)} executable(s) in archive\n")
+
+                    # Step 2: Score and rank executables
+                    scored_exes = []
+                    for exe_path, exe_size in exe_candidates:
+                        exe_name = os.path.basename(exe_path)
+                        score = _score_executable_name(exe_name)
+                        scored_exes.append((exe_path, score, exe_size))
+
+                    # Sort by score (highest first), then size (largest first)
+                    scored_exes.sort(key=lambda x: (-x[1], -x[2]))
+
+                    # Step 3: Extract ONLY the best EXE (saves massive disk space!)
+                    best_exe_path = scored_exes[0][0]
+                    best_exe_score = scored_exes[0][1]
+                    best_exe_size = scored_exes[0][2]
+
+                    sys.stderr.write(f"    Selected: {os.path.basename(best_exe_path)} (score:{best_exe_score}, size:{best_exe_size:,})\n")
+                    sys.stderr.write(f"    Extracting ONLY this file (disk space optimization)...\n")
+
+                    # Extract specific file
+                    extract_result = subprocess.run(
+                        [seven_zip_exe, 'x', '-y', f'-o{temp_dir}', archive_path, best_exe_path],
+                        capture_output=True,
+                        timeout=120
+                    )
+
+                    if extract_result.returncode == 0:
+                        # Find the extracted file
+                        extracted_path = os.path.join(temp_dir, best_exe_path)
+                        if os.path.exists(extracted_path):
+                            with open(extracted_path, 'rb') as f:
+                                exe_data = f.read()
+                            extracted_files.append((best_exe_path, exe_data, len(exe_data)))
+                            sys.stderr.write(f"    ✓ Extracted {os.path.basename(best_exe_path)} ({len(exe_data):,} bytes)\n")
+                            return extracted_files
+                        else:
+                            sys.stderr.write(f"    File not found after extraction: {extracted_path}\n")
+                    else:
+                        error_msg = extract_result.stderr.decode('utf-8', errors='replace')[:200]
+                        sys.stderr.write(f"    Selective extraction failed: {error_msg}\n")
+
+        except subprocess.TimeoutExpired:
+            sys.stderr.write(f"    {seven_zip_exe} timed out\n")
+        except Exception as e:
+            sys.stderr.write(f"    {seven_zip_exe} error: {e}\n")
+
+    # Method 2: Try p7zip
+    p7zip_path = shutil.which('p7zip')
+    if p7zip_path and not extracted_files:
+        sys.stderr.write(f"    Trying p7zip: {p7zip_path}\n")
+        try:
+            archive_name = os.path.basename(archive_path)
+            temp_archive = os.path.join(temp_dir, archive_name)
+            shutil.copy2(archive_path, temp_archive)
+
+            result = subprocess.run(
+                [p7zip_path, '-d', temp_archive],
+                capture_output=True,
+                timeout=120,
+                cwd=temp_dir
+            )
+
+            if result.returncode == 0:
+                for root, dirs, files in os.walk(temp_dir):
+                    for fname in files:
+                        if fname.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx')):
+                            fpath = os.path.join(root, fname)
+                            try:
+                                with open(fpath, 'rb') as f:
+                                    fdata = f.read()
+                                rel_path = os.path.relpath(fpath, temp_dir)
+                                extracted_files.append((rel_path, fdata, len(fdata)))
+                            except Exception as e:
+                                sys.stderr.write(f"    Failed to read {fname}: {e}\n")
+
+                if extracted_files:
+                    sys.stderr.write(f"    p7zip extracted {len(extracted_files)} executable(s)\n")
+                    return extracted_files
+            else:
+                sys.stderr.write(f"    p7zip failed: {result.stderr.decode('utf-8', errors='replace')[:200]}\n")
+
+        except subprocess.TimeoutExpired:
+            sys.stderr.write("    p7zip timed out\n")
+        except Exception as e:
+            sys.stderr.write(f"    p7zip error: {e}\n")
+
+    if not extracted_files:
+        sys.stderr.write("    No 7z CLI tool found or extraction failed\n")
+        sys.stderr.write("    To enable 7Z support with BCJ2 compression:\n")
+        sys.stderr.write("      Windows: Install 7-Zip from https://www.7-zip.org/\n")
+        sys.stderr.write("      Linux:   sudo apt-get install p7zip-full (or yum/dnf)\n")
+        sys.stderr.write("      macOS:   brew install p7zip\n")
+
+    return extracted_files
+
+
+def extract_exe_from_msi(file_data):
+    """Extract EXE/DLL from MSI - scans ALL streams for CAB and PE files.
+    MSI files store data in OLE streams.
+    """
+    sys.stderr.write("Processing MSI file...\n")
+
+    temp_msi = None
+    temp_dir = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".msi") as temp_msi_file:
+            temp_msi_file.write(file_data)
+            temp_msi = temp_msi_file.name
+
+        sys.stderr.write(f"Parsing MSI: {temp_msi}\n")
+        temp_dir = tempfile.mkdtemp()
+
+        # Try to open OLE file with error handling
+        try:
+            ole = olefile.OleFileIO(temp_msi)
+        except Exception as ole_error:
+            sys.stderr.write(f"olefile parsing failed: {ole_error}\n")
+            sys.stderr.write("Attempting direct CAB extraction from MSI...\n")
+
+            # Fallback: Search for CAB magic bytes directly in MSI
+            # CAB signature: "MSCF" (0x4D534346)
+            cab_signature = b'MSCF'
+            cab_offset = file_data.find(cab_signature)
+
+            if cab_offset != -1:
+                sys.stderr.write(f"Found CAB data at offset {cab_offset}\n")
+                # Extract CAB data (assume rest of file, or find next MSI structure)
+                # Look for reasonable CAB end (next 'MZ' or end of data)
+                cab_data = file_data[cab_offset:]
+
+                # Try to extract this CAB
+                extracted_files = extract_cab_cross_platform(cab_data, temp_dir)
+                if extracted_files:
+                    # Find best executable
+                    extracted_files.sort(key=lambda x: (-_score_executable_name(x[0]), -x[2]))
+                    best_exe_name, best_exe_data, best_exe_size = extracted_files[0]
+                    sys.stderr.write(f"✓ Selected via direct CAB: {best_exe_name} ({best_exe_size} bytes)\n")
+                    return best_exe_data, None
+
+            # If direct CAB extraction also fails, provide user-friendly error
+            raise Exception("MSI extraction not fully supported on this server. Please extract the .exe file from the MSI manually and upload it directly.")
+
+        sys.stderr.write("Scanning all MSI streams...\n")
+
+        cab_streams = []
+        pe_streams = []
+
+        for entry in ole.listdir():
+            try:
+                entry_name = '/'.join(entry)
+            except:
+                entry_name = str(entry)
+
+            try:
+                stream_data = ole.openstream(entry).read()
+                stream_size = len(stream_data)
+
+                if stream_size < 100:
+                    continue
+
+                if stream_data[:4] == b'MSCF':
+                    safe_name = entry_name.encode('ascii', 'replace').decode('ascii')
+                    sys.stderr.write(f"  Found CAB: {safe_name} ({stream_size} bytes)\n")
+                    cab_streams.append((entry_name, stream_data, stream_size))
+
+                elif stream_data[:2] == b'MZ':
+                    safe_name = entry_name.encode('ascii', 'replace').decode('ascii')
+                    sys.stderr.write(f"  Found PE: {safe_name} ({stream_size} bytes)\n")
+                    pe_streams.append((entry_name, stream_data, stream_size))
+
+            except Exception:
+                continue
+
+        ole.close()
+
+        sys.stderr.write(f"Found {len(cab_streams)} CAB(s), {len(pe_streams)} PE file(s)\n")
+
+        cab_streams.sort(key=lambda x: -x[2])
+
+        all_exe_candidates = []
+
+        for cab_name, cab_data, cab_size in cab_streams:
+            safe_cab_name = str(cab_name).encode('ascii', 'replace').decode('ascii')
+            sys.stderr.write(f"  Parsing CAB: {safe_cab_name}...\n")
+
+            cab_extracted = False
+            try:
+                cab = cabarchive.CabArchive(cab_data)
+
+                for filename_in_cab, cabfile in cab.items():
+                    if filename_in_cab.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx')):
+                        file_size = len(cabfile.buf) if hasattr(cabfile, 'buf') else 0
+                        score = _score_executable_name(filename_in_cab)
+                        safe_fname = str(filename_in_cab).encode('ascii', 'replace').decode('ascii')
+                        sys.stderr.write(f"    Found: {safe_fname} ({file_size} bytes, score:{score})\n")
+                        all_exe_candidates.append((filename_in_cab, cabfile.buf, score, file_size))
+                        cab_extracted = True
+
+            except Exception as cab_error:
+                sys.stderr.write(f"    CAB parsing failed: {cab_error}\n")
+
+                if 'LZX' in str(cab_error) or 'compression' in str(cab_error).lower():
+                    sys.stderr.write("    Trying cross-platform CAB extraction...\n")
+                    expanded_files = extract_cab_cross_platform(cab_data, temp_dir)
+
+                    for fname, fdata, fsize in expanded_files:
+                        if fname.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx')):
+                            score = _score_executable_name(fname)
+                            safe_fname = str(fname).encode('ascii', 'replace').decode('ascii')
+                            sys.stderr.write(f"    Found: {safe_fname} ({fsize} bytes, score:{score})\n")
+                            all_exe_candidates.append((fname, fdata, score, fsize))
+                            cab_extracted = True
+
+            if not cab_extracted:
+                continue
+
+        for pe_name, pe_data, pe_size in pe_streams:
+            score = _score_executable_name(pe_name)
+            all_exe_candidates.append((pe_name, pe_data, score, pe_size))
+
+        if not all_exe_candidates:
+            if cab_streams:
+                return None, "MSI uses LZX compression which requires cabextract (not available). Please extract the .exe manually and upload it directly."
+            return None, "No executable files found in MSI"
+
+        all_exe_candidates.sort(key=lambda x: (-x[2], -x[3]))
+
+        sys.stderr.write(f"Best candidate: {all_exe_candidates[0][0]} (score:{all_exe_candidates[0][2]})\n")
+
+        best_name, best_data, best_score, best_size = all_exe_candidates[0]
+        sys.stderr.write(f"✓ Selected: {best_name} ({best_size} bytes)\n")
+        return best_data, None
+
+    except ImportError as ie:
+        return None, f"MSI support requires olefile and cabarchive: {ie}"
+
+    except Exception as e:
+        sys.stderr.write(f"MSI extraction error: {e}\n")
+        import traceback
+        traceback.print_exc()
+        return None, f"MSI extraction failed: {str(e)}"
+
+    finally:
+        safe_temp_cleanup(temp_msi)
+        safe_temp_cleanup(temp_dir)
+
+
+def extract_from_7z_improved(file_data, filename):
+    """Improved 7z extraction with smart executable selection"""
+    sys.stderr.write("Processing 7Z file...\n")
+    sys.stderr.write(f"7Z file size: {len(file_data)} bytes\n")
+    sys.stderr.flush()
+
+    if not HAS_7Z:
+        sys.stderr.write("  py7zr not available\n")
+        sys.stderr.write("  Install: pip install py7zr\n")
+        sys.stderr.write("  Note: py7zr doesn't support BCJ2 - will try CLI tools if needed\n")
+        return None, "7Z support not available (missing py7zr package)"
+
+    temp_archive_path = None
+    temp_dir = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".7z") as temp_archive:
+            temp_archive.write(file_data)
+            temp_archive_path = temp_archive.name
+
+        sys.stderr.write("Trying py7zr...\n")
+        with py7zr.SevenZipFile(temp_archive_path, mode='r') as archive:
+            try:
+                file_info_list = archive.list()
+                all_files_info = [(f.filename, getattr(f, 'uncompressed', 0) or 0) for f in file_info_list]
+                sys.stderr.write(f"Listed {len(all_files_info)} files\n")
+            except Exception as e:
+                sys.stderr.write(f"list() failed: {e}, trying getnames()\n")
+                all_files = archive.getnames()
+                all_files_info = [(f, 0) for f in all_files]
+
+            exe_files_info = [(f, size) for f, size in all_files_info
+                              if f.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx'))]
+
+            if not exe_files_info:
+                return None, "No executable files found in 7Z archive"
+
+            exe_files_info.sort(key=lambda x: (-_score_executable_name(x[0]), -x[1]))
+
+            sys.stderr.write(f"Found {len(exe_files_info)} executables, ranked:\n")
+            for i, (name, size) in enumerate(exe_files_info[:5]):
+                score = _score_executable_name(name)
+                sys.stderr.write(f"  {i+1}. {name} (score:{score}, size:{size})\n")
+
+            temp_dir = tempfile.mkdtemp()
+            unsupported_compression_count = 0
+
+            for target_file, target_size in exe_files_info:
+                try:
+                    sys.stderr.write(f"Extracting: {target_file}\n")
+
+                    with py7zr.SevenZipFile(temp_archive_path, mode='r') as archive2:
+                        archive2.extract(path=temp_dir, targets=[target_file])
+
+                    extracted_path = os.path.join(temp_dir, target_file)
+                    extracted_path = extracted_path.replace('/', os.sep).replace('\\', os.sep)
+
+                    if not os.path.exists(extracted_path):
+                        for root, dirs, files in os.walk(temp_dir):
+                            for f in files:
+                                if f.lower() == os.path.basename(target_file).lower():
+                                    extracted_path = os.path.join(root, f)
+                                    break
+
+                    if os.path.exists(extracted_path):
+                        with open(extracted_path, 'rb') as f:
+                            extracted_data = f.read()
+
+                        sys.stderr.write(f"✓ Extracted {len(extracted_data)} bytes\n")
+                        return extracted_data, None
+
+                except Exception as e:
+                    error_str = str(e)
+                    sys.stderr.write(f"  Failed to extract {target_file}: {e}\n")
+                    if 'BCJ' in error_str or 'not supported' in error_str.lower():
+                        unsupported_compression_count += 1
+                    continue
+
+            if unsupported_compression_count == len(exe_files_info):
+                sys.stderr.write("All extractions failed due to unsupported compression.\n")
+
+                if HAS_LIBARCHIVE:
+                    sys.stderr.write("Trying libarchive fallback...\n")
+                    extracted_files = extract_7z_with_libarchive(temp_archive_path, temp_dir)
+                    if extracted_files:
+                        extracted_files.sort(key=lambda x: (-_score_executable_name(x[0]), -x[2]))
+                        sys.stderr.write(f"Found {len(extracted_files)} executables via libarchive:\n")
+                        for name, data, size in extracted_files[:5]:
+                            score = _score_executable_name(name)
+                            sys.stderr.write(f"  {name} (score:{score}, size:{size})\n")
+                        best_name, best_data, best_size = extracted_files[0]
+                        sys.stderr.write(f"✓ Selected: {best_name} ({best_size} bytes)\n")
+                        return best_data, None
+
+                sys.stderr.write("Trying 7z CLI fallback...\n")
+                cli_temp_dir = tempfile.mkdtemp()
+                try:
+                    extracted_files = extract_7z_with_cli(temp_archive_path, cli_temp_dir)
+
+                    if extracted_files:
+                        extracted_files.sort(key=lambda x: (-_score_executable_name(x[0]), -x[2]))
+
+                        sys.stderr.write(f"Found {len(extracted_files)} executables via CLI:\n")
+                        for name, data, size in extracted_files[:5]:
+                            score = _score_executable_name(name)
+                            sys.stderr.write(f"  {name} (score:{score}, size:{size})\n")
+
+                        best_name, best_data, best_size = extracted_files[0]
+                        sys.stderr.write(f"✓ Selected: {best_name} ({best_size} bytes)\n")
+                        return best_data, None
+                finally:
+                    safe_temp_cleanup(cli_temp_dir)
+
+            sys.stderr.write("  7Z file uses BCJ2 or other unsupported compression\n")
+            sys.stderr.write("  All extraction methods failed (py7zr, libarchive, CLI tools)\n")
+            sys.stderr.write("  Solution: Extract .exe manually using 7-Zip and upload directly\n")
+            return None, "7Z file uses BCJ2 compression which requires 7-Zip CLI tools (not found)"
+
+    except py7zr.exceptions.Bad7zFile as e:
+        sys.stderr.write(f"py7zr Bad7zFile error: {e}\n")
+
+        if HAS_LIBARCHIVE and temp_archive_path:
+            sys.stderr.write("Trying libarchive fallback...\n")
+            extracted_files = extract_7z_with_libarchive(temp_archive_path, temp_dir or tempfile.mkdtemp())
+            if extracted_files:
+                extracted_files.sort(key=lambda x: (-_score_executable_name(x[0]), -x[2]))
+                best_name, best_data, best_size = extracted_files[0]
+                sys.stderr.write(f"✓ Selected: {best_name} ({best_size} bytes)\n")
+                return best_data, None
+
+        sys.stderr.write("  7Z extraction failed - file may be corrupted or use unsupported format\n")
+        return None, "7Z file uses unsupported compression or is corrupted. Extract manually with 7-Zip"
+
+    except Exception as e:
+        error_str = str(e)
+        sys.stderr.write(f"py7zr failed: {error_str}\n")
+
+        if 'UnsupportedCompressionMethodError' in type(e).__name__ or 'BCJ' in error_str or 'not supported' in error_str.lower():
+            if HAS_LIBARCHIVE and temp_archive_path:
+                sys.stderr.write("Trying libarchive fallback...\n")
+                lib_temp_dir = temp_dir or tempfile.mkdtemp()
+                extracted_files = extract_7z_with_libarchive(temp_archive_path, lib_temp_dir)
+                if extracted_files:
+                    extracted_files.sort(key=lambda x: (-_score_executable_name(x[0]), -x[2]))
+                    best_name, best_data, best_size = extracted_files[0]
+                    sys.stderr.write(f"✓ Selected: {best_name} ({best_size} bytes)\n")
+                    return best_data, None
+
+            sys.stderr.write("Trying 7z CLI fallback...\n")
+            if temp_archive_path:
+                cli_temp_dir = tempfile.mkdtemp()
+                try:
+                    extracted_files = extract_7z_with_cli(temp_archive_path, cli_temp_dir)
+
+                    if extracted_files:
+                        extracted_files.sort(key=lambda x: (-_score_executable_name(x[0]), -x[2]))
+
+                        sys.stderr.write(f"Found {len(extracted_files)} executables via CLI:\n")
+                        for name, data, size in extracted_files[:5]:
+                            score = _score_executable_name(name)
+                            sys.stderr.write(f"  {name} (score:{score}, size:{size})\n")
+
+                        best_name, best_data, best_size = extracted_files[0]
+                        sys.stderr.write(f"✓ Selected: {best_name} ({best_size} bytes)\n")
+                        return best_data, None
+                finally:
+                    safe_temp_cleanup(cli_temp_dir)
+
+        import traceback
+        traceback.print_exc()
+        sys.stderr.write("  7Z extraction failed - file may be corrupted or use unsupported format\n")
+        return None, "7Z file uses unsupported compression or is corrupted. Extract manually with 7-Zip"
+    finally:
+        safe_temp_cleanup(temp_archive_path)
+        if temp_dir:
+            safe_temp_cleanup(temp_dir)
+
+
+def process_archive(file_data, filename):
+    """Extract EXE from archive and return its data"""
+    sys.stderr.write(f"Parsing archive: {filename}\n")
+    sys.stderr.flush()
+
+    filename_lower = filename.lower()
+
+    # Try ZIP extraction
+    if filename_lower.endswith('.zip'):
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_data)) as zf:
+                exe_files = []
+                for f in zf.namelist():
+                    if f.lower().endswith(('.exe', '.dll', '.scr', '.cpl', '.ocx')):
+                        try:
+                            info = zf.getinfo(f)
+                            exe_files.append((f, info.file_size))
+                        except:
+                            exe_files.append((f, 0))
+
+                if not exe_files:
+                    sys.stderr.write("  No executables found in ZIP\n")
+                    return None, "EXE_NOT_FOUND"
+
+                exe_files.sort(key=lambda x: (-_score_executable_name(x[0]), -x[1]))
+
+                sys.stderr.write(f"  Found {len(exe_files)} executable(s):\n")
+                for name, size in exe_files[:5]:
+                    score = _score_executable_name(name)
+                    sys.stderr.write(f"    {name} (score:{score}, size:{size})\n")
+
+                best_file = exe_files[0][0]
+                sys.stderr.write(f"  ✓ Selected: {best_file}\n")
+                return zf.read(best_file), None
+
+        except zipfile.BadZipFile:
+            sys.stderr.write("  ✗ Corrupted or incomplete ZIP file\n")
+            return None, "INCOMPLETE_ZIP"
+        except Exception as e:
+            sys.stderr.write(f"  ✗ ZIP extraction error: {e}\n")
+            return None, f"ZIP extraction failed: {str(e)}"
+
+    # Try 7Z extraction
+    elif filename_lower.endswith('.7z'):
+        return extract_from_7z_improved(file_data, filename)
+
+    # Try MSI extraction
+    elif filename_lower.endswith('.msi'):
+        if not HAS_PYMSI:
+            sys.stderr.write("  MSI support requires olefile and cabarchive packages\n")
+            sys.stderr.write("  Install: pip install olefile cabarchive\n")
+            return None, "MSI support not available (missing: olefile or cabarchive)"
+
+        try:
+            exe_data, error = extract_exe_from_msi(file_data)
+            if exe_data:
+                return exe_data, None
+            else:
+                # Provide more specific error message
+                if error and "LZX" in error:
+                    sys.stderr.write("  MSI uses LZX compression - requires system tools\n")
+                    if sys.platform == 'win32':
+                        sys.stderr.write("  expand.exe should be available on Windows\n")
+                    else:
+                        sys.stderr.write("  Install cabextract: sudo apt-get install cabextract (Linux)\n")
+                        sys.stderr.write("                      brew install cabextract (macOS)\n")
+                return None, error or "EXE_NOT_FOUND"
+
+        except Exception as e:
+            sys.stderr.write(f"  ✗ MSI extraction error: {e}\n")
+            return None, f"MSI extraction failed: {str(e)}"
+
+    return None, "Unsupported archive format"
+
+
+def extract_icon_from_exe(file_data):
+    """Extract the best quality icon from Windows executable.
+    Handles multi-icon executables by trying all icon groups if the first fails.
+    """
+    try:
+        extractor = IconExtractor(data=file_data)
+
+        sys.stderr.write("Trying default icon extraction...\n")
+        try:
+            icon_data = extractor.get_icon()
+            if icon_data is not None:
+                icon = _parse_ico_and_get_best(icon_data)
+                if icon is not None:
+                    sys.stderr.write(f"✓ Extracted default icon: {icon.size}, {icon.mode}\n")
+                    sys.stderr.flush()
+                    return icon
+        except Exception as e:
+            sys.stderr.write(f"Default extraction failed: {e}\n")
+
+        sys.stderr.write("Trying to list all icon groups...\n")
+        try:
+            icon_groups = extractor.list_group_icons()
+            sys.stderr.write(f"Found {len(icon_groups)} icon group(s)\n")
+
+            if icon_groups:
+                for group_idx, group_id in enumerate(icon_groups):
+                    try:
+                        actual_id = group_id[0] if isinstance(group_id, tuple) else group_id
+                        sys.stderr.write(f"  Trying group {group_idx} (ID: {actual_id})...\n")
+                        icon_data = extractor.get_icon(num=actual_id)
+
+                        if icon_data is None:
+                            continue
+
+                        icon = _parse_ico_and_get_best(icon_data)
+                        if icon is not None:
+                            sys.stderr.write(f"✓ Extracted from group {actual_id}: {icon.size}, {icon.mode}\n")
+                            sys.stderr.flush()
+                            return icon
+
+                    except Exception as e:
+                        sys.stderr.write(f"    Group {actual_id} failed: {e}\n")
+                        continue
+
+        except Exception as e:
+            sys.stderr.write(f"Could not list icon groups: {e}\n")
+
+        sys.stderr.write("All extraction methods failed\n")
+        sys.stderr.flush()
+        return None
+
+    except Exception as e:
+        error_msg = str(e)
+        sys.stderr.write(f"Extraction failed: {error_msg}\n")
+        sys.stderr.flush()
+        return None
+
+
+def extract_icon_from_exe_file(filepath):
+    """Extract icon from large EXE file using file path (memory-mapped access).
+    This is more efficient for very large files (100MB+).
+    """
+    try:
+        extractor = IconExtractor(filepath)
+
+        sys.stderr.write("Trying default icon extraction...\n")
+        try:
+            icon_data = extractor.get_icon()
+            if icon_data is not None:
+                icon = _parse_ico_and_get_best(icon_data)
+                if icon is not None:
+                    sys.stderr.write(f"✓ Extracted default icon: {icon.size}, {icon.mode}\n")
+                    sys.stderr.flush()
+                    return icon
+        except Exception as e:
+            sys.stderr.write(f"Default extraction failed: {e}\n")
+
+        sys.stderr.write("Trying to list all icon groups...\n")
+        try:
+            icon_groups = extractor.list_group_icons()
+            sys.stderr.write(f"Found {len(icon_groups)} icon group(s)\n")
+
+            if icon_groups:
+                for group_idx, group_id in enumerate(icon_groups):
+                    try:
+                        actual_id = group_id[0] if isinstance(group_id, tuple) else group_id
+                        sys.stderr.write(f"  Trying group {group_idx} (ID: {actual_id})...\n")
+                        icon_data = extractor.get_icon(num=actual_id)
+
+                        if icon_data is None:
+                            continue
+
+                        icon = _parse_ico_and_get_best(icon_data)
+                        if icon is not None:
+                            sys.stderr.write(f"✓ Extracted from group {actual_id}: {icon.size}, {icon.mode}\n")
+                            sys.stderr.flush()
+                            return icon
+
+                    except Exception as e:
+                        sys.stderr.write(f"    Group {actual_id} failed: {e}\n")
+                        continue
+
+        except Exception as e:
+            sys.stderr.write(f"Could not list icon groups: {e}\n")
+
+        sys.stderr.write("All extraction methods failed\n")
+        sys.stderr.flush()
+        return None
+
+    except Exception as e:
+        sys.stderr.write(f"File extraction failed: {e}\n")
+        sys.stderr.flush()
+        return None
+
+
+def _parse_ico_and_get_best(icon_data):
+    """Parse ICO data and extract the best quality image.
+    Returns PIL Image or None if parsing fails.
+    """
+    from io import BytesIO
+
+    try:
+        icon_data.seek(0)
+        ico_header = icon_data.read(6)
+
+        if len(ico_header) < 6:
+            raise Exception("Invalid ICO header")
+
+        num_images = struct.unpack('<H', ico_header[4:6])[0]
+
+        if num_images > 1:
+            sys.stderr.write(f"  ICO contains {num_images} images, selecting largest...\n")
+
+            entries = []
+            for i in range(num_images):
+                entry_data = icon_data.read(16)
+                if len(entry_data) < 16:
+                    break
+
+                width, height, colors, reserved, planes, bitcount, size_bytes, offset = struct.unpack('<BBBBHHII', entry_data)
+
+                if width == 0:
+                    width = 256
+                if height == 0:
+                    height = 256
+
+                entries.append({
+                    'width': width,
+                    'height': height,
+                    'bitcount': bitcount,
+                    'size': size_bytes,
+                    'offset': offset,
+                    'index': i
+                })
+
+                sys.stderr.write(f"    Image {i}: {width}x{height}, {bitcount}bpp, {size_bytes} bytes\n")
+
+            if not entries:
+                raise Exception("No valid icon entries found")
+
+            size_groups = defaultdict(list)
+            for entry in entries:
+                key = (entry['width'], entry['height'])
+                size_groups[key].append(entry)
+
+            best_entries = []
+            for dimension, group in size_groups.items():
+                largest = max(group, key=lambda x: x['size'])
+                best_entries.append(largest)
+                if len(group) > 1:
+                    sys.stderr.write(f"    Dimension {dimension[0]}x{dimension[1]}: Selected {largest['size']} bytes (largest of {len(group)} options)\n")
+
+            best_icon_entry = max(best_entries, key=lambda x: (x['width'] * x['height'], x['size']))
+
+            sys.stderr.write(f"  ✓ Selected: {best_icon_entry['width']}x{best_icon_entry['height']}, {best_icon_entry['size']} bytes\n")
+
+            icon_data.seek(0)
+            full_ico = icon_data.read()
+
+            selected_offset = best_icon_entry['offset']
+            selected_size = best_icon_entry['size']
+            selected_image = full_ico[selected_offset:selected_offset + selected_size]
+
+            new_ico = BytesIO()
+            new_ico.write(struct.pack('<HHH', 0, 1, 1))
+
+            width_byte = best_icon_entry['width'] if best_icon_entry['width'] < 256 else 0
+            height_byte = best_icon_entry['height'] if best_icon_entry['height'] < 256 else 0
+            new_ico.write(struct.pack('<BBBBHHII',
+                width_byte, height_byte, 0, 0,
+                1, best_icon_entry['bitcount'],
+                selected_size, 22))
+
+            new_ico.write(selected_image)
+
+            new_ico.seek(0)
+            return Image.open(new_ico)
+        else:
+            icon_data.seek(0)
+            return Image.open(icon_data)
+
+    except Exception as parse_error:
+        sys.stderr.write(f"  ICO parsing failed: {parse_error}, trying direct open\n")
+        try:
+            icon_data.seek(0)
+            return Image.open(icon_data)
+        except Exception as e:
+            sys.stderr.write(f"  Direct open also failed: {e}\n")
+            return None
+
+
+def pil_to_scalenx_format(image):
+    """Convert PIL Image to ScaleNx 3D nested list format"""
+    if image.mode != 'RGBA':
+        image = image.convert('RGBA')
+
+    width, height = image.size
+    pixels = list(image.getdata())
+
+    result = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            pixel_index = y * width + x
+            row.append(list(pixels[pixel_index]))
+        result.append(row)
+
+    return result
+
+
+def scalenx_to_pil(data):
+    """Convert ScaleNx 3D nested list to PIL Image"""
+    height = len(data)
+    width = len(data[0])
+
+    pixels = []
+    for row in data:
+        for pixel in row:
+            pixels.append(tuple(pixel))
+
+    image = Image.new('RGBA', (width, height))
+    image.putdata(pixels)
+    return image
+
+
+def calculate_smart_output_size(original_size):
+    """Calculate ideal output size using integer scaling"""
+
+    needs_ai_enhancement = original_size < 128
+
+    if needs_ai_enhancement:
+        if original_size >= 75:
+            multiplier = 2
+            output_size = original_size * multiplier
+        elif original_size >= 50:
+            multiplier = 3
+            output_size = original_size * multiplier
+        elif original_size >= 38:
+            multiplier = 4
+            output_size = original_size * multiplier
+        else:
+            multiplier = 5 if original_size >= 30 else 6
+            output_size = original_size * multiplier
+
+        if output_size < 150:
+            multiplier += 1
+            output_size = original_size * multiplier
+        elif output_size > 192:
+            multiplier = int(192 / original_size)
+            output_size = original_size * multiplier
+            if output_size < 150:
+                multiplier += 1
+                output_size = original_size * multiplier
+
+        return output_size, multiplier, True
+    else:
+        if original_size >= 256:
+            return original_size, 1, False
+        else:
+            multiplier = 2
+            output_size = original_size * multiplier
+            return output_size, multiplier, False
+
+
+def pixel_art_upscale(icon_image, target_multiplier=1):
+    """Pixel-art optimized upscaling"""
+    start_time = time.time()
+    original_size = max(icon_image.size)
+
+    if target_multiplier == 1:
+        sys.stderr.write(f"Icon already optimal size ({original_size}px), keeping original\n")
+        return icon_image
+
+    sys.stderr.write(f"Upscaling {original_size}px with {target_multiplier}× multiplier\n")
+
+    if HAS_SCALENX and target_multiplier in [2, 3]:
+        try:
+            data = pil_to_scalenx_format(icon_image)
+
+            if target_multiplier == 2:
+                sys.stderr.write("Applying Scale2x (2× integer upscale)\n")
+                scaled_data = scalenx.scale2x(data)
+            elif target_multiplier == 3:
+                sys.stderr.write("Applying Scale3x (3× integer upscale)\n")
+                scaled_data = scalenx.scale3x(data)
+
+            upscaled = scalenx_to_pil(scaled_data)
+            upscaled = upscaled.filter(ImageFilter.UnsharpMask(radius=0.3, percent=80, threshold=1))
+
+            elapsed = time.time() - start_time
+            sys.stderr.write(f"✓ Scale{target_multiplier}× upscale completed in {elapsed:.2f}s\n")
+            return upscaled
+
+        except Exception as e:
+            sys.stderr.write(f"ScaleNx failed: {e}, using NEAREST neighbor\n")
+
+    new_width = icon_image.width * target_multiplier
+    new_height = icon_image.height * target_multiplier
+
+    upscaled = icon_image.resize((new_width, new_height), Image.Resampling.NEAREST)
+
+    if target_multiplier >= 4:
+        upscaled = upscaled.filter(ImageFilter.UnsharpMask(radius=0.5, percent=100, threshold=1))
+
+    elapsed = time.time() - start_time
+    sys.stderr.write(f"✓ {target_multiplier}× NEAREST upscale completed in {elapsed:.2f}s\n")
+
+    return upscaled
