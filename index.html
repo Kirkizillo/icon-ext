@@ -712,43 +712,46 @@
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 180000);
 
-                        let response;
                         try {
-                            response = await fetch(`${API_URL}/api/extract-icon`, {
+                            const response = await fetch(`${API_URL}/api/extract-icon`, {
                                 method: 'POST',
                                 body: formData,
                                 signal: controller.signal
                             });
                             clearTimeout(timeoutId);
+
+                            if (response.ok) {
+                                const blob = await response.blob();
+                                const originalSize = response.headers.get('X-Original-Size') || 'unknown';
+                                const outputSize = response.headers.get('X-Output-Size') || 'unknown';
+                                const quality = response.headers.get('X-Quality') || 'unknown';
+
+                                const baseName = file.name.replace(/\.(apk|xapk)$/i, '');
+                                const actualFilename = outputSize ? `${baseName}_${outputSize}.png` : `${baseName}.png`;
+
+                                addIconToPreview(blob, file.name, {
+                                    wasUpscaled: quality !== 'high',
+                                    originalSize: originalSize,
+                                    quality: quality,
+                                    outputSize: outputSize
+                                }, actualFilename);
+
+                                successCount++;
+                                if (!isBatch) showToast(`${file.name}: Extracted (${originalSize})`, 'success');
+                            } else {
+                                const errorData = await response.json();
+                                console.error(`Error processing ${file.name}:`, errorData.error);
+                                if (!isBatch) showToast(`${file.name}: ${errorData.error}`, 'error');
+                                failedFiles.push({ name: file.name, error: errorData.error });
+                                errorCount++;
+                            }
                         } catch (error) {
                             clearTimeout(timeoutId);
-                            if (error.name === 'AbortError') {
-                                console.error('Request timeout');
-                                results.push({ error: `Timeout processing ${file.name}` });
-                                continue;
-                            }
-                            console.error('Network error:', error);
-                            results.push({ error: `Network error: ${error.message}` });
-                            continue;
-                        }
-
-                        if (response.ok) {
-                            const blob = await response.blob();
-                            const originalSize = response.headers.get('X-Original-Size') || 'unknown';
-                            const outputSize = response.headers.get('X-Output-Size') || 'unknown';
-                            const quality = response.headers.get('X-Quality') || 'unknown';
-
-                            results.push({
-                                filename: file.name.replace(/\.(apk|xapk)$/i, '.png'),
-                                blob: blob,
-                                originalSize: originalSize,
-                                outputSize: outputSize,
-                                quality: quality
-                            });
-                        } else {
-                            const errorData = await response.json();
-                            console.error(`Error processing ${file.name}:`, errorData.error);
-                            results.push({ error: `${file.name}: ${errorData.error}` });
+                            const errorMsg = error.name === 'AbortError' ? 'Request timeout' : error.message;
+                            console.error(`Error processing ${file.name}:`, errorMsg);
+                            if (!isBatch) showToast(`${file.name}: ${errorMsg}`, 'error');
+                            failedFiles.push({ name: file.name, error: errorMsg });
+                            errorCount++;
                         }
                         continue;
                     }
