@@ -646,7 +646,7 @@
                         continue;
                     }
 
-                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi|png|jpg|jpeg|ico|webp|icns)$/i)) {
+                    if (!file.name.match(/\.(exe|dll|scr|cpl|ocx|zip|7z|msi|apk|xapk|png|jpg|jpeg|ico|webp|icns)$/i)) {
                         if (!isBatch) showToast(`${file.name} is not a valid file type`, 'error');
                         failedFiles.push({ name: file.name, error: 'Unsupported file type' });
                         errorCount++;
