@@ -943,7 +943,7 @@
                         }
 
                         // Phase 2: If server says we need full upload, retry with full file
-                        if (!response.ok && file.size > 50 * 1024 * 1024) {
+                        if (!response.ok) {
                             const errorData = await response.json().catch(() => ({}));
                             if (errorData.needsFullUpload) {
                                 if (!isBatch) showToast(`${file.name}: Large file, uploading full file...`, 'info');
